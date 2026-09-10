@@ -64,14 +64,24 @@ chiffrées et pré-écrites : une porte se franchit sur un critère, pas sur un 
 |---|---|---|---|
 | **IS** — bac à sable | 2017-08-17 → 2022-12-31 | 46 983 | libre |
 | **OOS** — validation | 2023-01-01 → 2025-08-31 | 23 375 | 1 ouverture par stratégie |
-| **VAULT** — coffre-fort | 2025-09-01 → 2026-08-31 | 8 760 | **1 ouverture pour tout le projet** |
+| **VAULT-H** — coffre historique | 2025-09-01 → 2026-08-31 | 8 760 | 1 ouverture, **valeur indicative seulement** |
+| **VAULT-F** — coffre futur | à partir du 2026-09-10 | croît | **1 ouverture, définitive** |
 
 Source : dumps publics Binance spot (`data.binance.vision`), BTCUSDT, 1h et 15m.
 Téléchargement reproductible par `python3 data/fetch.py`, hash publié dans
 `data/MANIFEST.json`.
 
-**Le coffre-fort est chiffré, pas seulement rangé à part.** La période VAULT est
-physiquement absente des fichiers publiés. La clé AES-256 vit hors du dépôt, dans
+**Il y a deux coffres, et un seul est propre.** Astra a objecté — archives à
+l'appui — que la période 2025-2026 avait déjà été consultée comme test final dans
+un projet antérieur (`final_test_already_consulted: "2025-2026"`). Changer de
+fournisseur de données ne rétablit pas l'indépendance : ce sont les mêmes prix,
+déjà regardés. **VAULT-H peut donc tuer une stratégie, jamais l'anoblir.** Seul
+**VAULT-F**, collecté après le gel du 10 septembre 2026, est vierge par
+construction. Détail : [vault/SEAL.md](vault/SEAL.md).
+
+**Le coffre est chiffré, pas seulement rangé à part.** La période scellée est
+physiquement absente des fichiers publiés, et `data/fetch.py` est borné pour
+qu'un retéléchargement ne la réécrive pas en clair. La clé AES-256 vit hors du dépôt, dans
 `~/.moteur-edge-btc/vault.key`, et a été générée par un sous-processus qui l'a
 écrite directement sur disque — elle n'a jamais transité par la sortie standard,
 donc aucun des deux agents ne l'a lue. Le verrou tient même contre nous.
@@ -85,8 +95,11 @@ vérifié : une altération se voit.
 ## Démarrer
 
 ```bash
-python3 data/fetch.py                 # télécharge et vérifie les données
+pip install -r requirements.txt
+python3 data/fetch.py                      # données, vérifiées et hashées
+python3 -m unittest discover -s tests -v   # 26 tests des mécanismes du protocole
 python3 -m engine.run experiments/EXP-0000-calibration/spec.yaml --split IS
+python3 -m engine.attack experiments/EXP-0000-calibration/spec.yaml --params '{"fen":72,"seuil":2.0}'
 ```
 
 Structure :
@@ -129,11 +142,24 @@ et personne ne peut repartir de zéro.**
 
 ---
 
+## La barre à franchir
+
+Mesuré, pas supposé — `experiments/EXP-0000-calibration/RAPPORT.md` :
+
+> Un balayage de **neuf configurations** sur du **bruit pur** produit un t-stat
+> maximal de **+1,67 au 95ᵉ centile** et **+4,03 au maximum**, avec une médiane
+> positive.
+
+Neuf. Une grille minuscule suffit à fabriquer un t-stat de 1,7. C'est le chiffre
+que toute stratégie proposée ici doit battre.
+
 ## Statut
 
 | | |
 |---|---|
 | Harness | opérationnel, test anti-lookahead automatique |
-| Données | 79 117 barres 1h + 316 414 barres 15m, 29 gaps |
-| Coffre-fort | scellé le 2026-09-10, 0 ouverture |
+| Données publiques | 70 357 barres 1h + 281 374 barres 15m, 29 et 32 gaps |
+| Tests des mécanismes | **26, 0 échec** |
+| Coffres | scellés le 2026-09-10, **0 ouverture** |
+| Compteur d'essais | **136** (dette héritée déclarée, minorant) |
 | Stratégies passées en G7 | **0** |

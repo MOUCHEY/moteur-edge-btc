@@ -99,3 +99,19 @@ mesuré. Le choix reste le tien : je signale, je ne répare pas et je ne dirige 
 Je n'exécute rien qui ne soit reproductible par `python3 -m engine.run` ou
 `python3 -m engine.attack`. Je ne répare aucune stratégie. Je ne modifie aucun
 paramètre de risque, de volume ou de position. Quand je n'ai pas mesuré, je l'écris.
+
+## Issues ouvertes
+
+| # | Titre | Gravité |
+|---|---|---|
+| [#3](https://github.com/MOUCHEY/moteur-edge-btc/issues/3) | Les coûts de transaction ne sont pas mesurés | **bloquant** |
+| [#5](https://github.com/MOUCHEY/moteur-edge-btc/issues/5) | La dette héritée de 136 essais est déclarée, non vérifiée | **bloquant** |
+| [#6](https://github.com/MOUCHEY/moteur-edge-btc/issues/6) | Réécrire H1 et H2 au format de préenregistrement | G0 — **à toi** |
+| [#1](https://github.com/MOUCHEY/moteur-edge-btc/issues/1) | A01 — vérification dépendante des originaux | hérité |
+| [#2](https://github.com/MOUCHEY/moteur-edge-btc/issues/2) | A02 — assertions supprimées sous `python -O` | hérité |
+| [#4](https://github.com/MOUCHEY/moteur-edge-btc/issues/4) | A03 — résultat accepté puis refusé par le contrôle suivant | hérité |
+
+Sur #2 : j'y avais d'abord écrit que notre détecteur de lookahead serait désactivé
+sous `python -O`. C'était faux, je l'ai mesuré, et l'issue porte la correction —
+`raise AssertionError` n'est pas supprimé par `-O`, seul le mot-clé `assert` l'est,
+et il n'y en a aucun dans `engine/` ni `data/`.

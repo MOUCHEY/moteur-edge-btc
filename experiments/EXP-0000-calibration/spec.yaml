@@ -1,0 +1,26 @@
+id: EXP-0000
+titre: "Calibration du harness — plancher de bruit d'un balayage de retour a la moyenne"
+auteur: claude
+notes: >
+  Ce n'est PAS une strategie candidate. C'est un instrument de mesure : on balaye
+  une famille banale de retour a la moyenne, puis on rejoue exactement le meme
+  balayage sur des series synthetiques. Le resultat donne la barre que toute
+  strategie proposee devra franchir. Publie en tant que reference, pas en tant
+  que decouverte.
+
+data:
+  interval: 1h
+
+signal:
+  entry_long: "(z_close_{fen} < -{seuil}) & (rsi_14 < 45)"
+  entry_short: "(z_close_{fen} > {seuil}) & (rsi_14 > 55)"
+
+exit:
+  mode: horizon
+  horizon: 12
+
+params:
+  fen: [24, 72, 168]
+  seuil: [1.5, 2.0, 2.5]
+
+budget_essais: 9

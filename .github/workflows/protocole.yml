@@ -1,0 +1,78 @@
+name: Protocole
+
+# Ce workflow n'evalue aucune strategie. Il verifie que les MECANISMES qui
+# imposent le protocole sont en place et fonctionnent. Une regle qui n'est pas
+# testee ici n'est qu'une phrase dans un document.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  mecanismes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Dependances
+        run: pip install -r requirements.txt
+
+      - name: Tests des mecanismes du protocole
+        run: python -m unittest discover -s tests -v
+
+      - name: Toutes les specs sont valides
+        run: |
+          python - <<'PY'
+          import sys, pathlib
+          sys.path.insert(0, ".")
+          from engine import spec as sm
+          ko = 0
+          for p in sorted(pathlib.Path("experiments").rglob("spec.yaml")):
+              if "TEMPLATE" in str(p):
+                  continue
+              errs = sm.load(p).validate()
+              print(("OK  " if not errs else "KO  ") + str(p))
+              for e in errs:
+                  print("      -", e); ko += 1
+          sys.exit(1 if ko else 0)
+          PY
+
+      - name: Le coffre-fort est bien scelle
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys
+          seal = json.loads(pathlib.Path("vault/SEAL.json").read_text())
+          # 1) la clef ne doit jamais etre dans le depot
+          assert not str(seal["clef"]).startswith(str(pathlib.Path.cwd())), "clef dans le depot"
+          # 2) aucune autorisation d'ouverture ne doit etre commitee
+          assert not pathlib.Path("vault/OPEN_AUTHORISATION").exists(), \
+              "OPEN_AUTHORISATION est versionne : le verrou est leve en permanence"
+          # 3) les fichiers chiffres doivent exister et etre non vides
+          for s in seal["series"]:
+              f = pathlib.Path("vault") / s["fichier_chiffre"]
+              assert f.exists() and f.stat().st_size > 0, f"{f} absent ou vide"
+          print("coffre scelle, clef hors depot, aucune autorisation ouverte")
+          PY
+
+      - name: Le compteur d'essais ne redescend jamais
+        run: |
+          python - <<'PY'
+          import json, pathlib, subprocess, sys
+          cur = json.loads(pathlib.Path("experiments/ledger.json").read_text())["total_configs"]
+          try:
+              prev_raw = subprocess.run(
+                  ["git", "show", "HEAD~1:experiments/ledger.json"],
+                  capture_output=True, text=True, check=True).stdout
+              prev = json.loads(prev_raw)["total_configs"]
+          except Exception:
+              print(f"pas d'etat precedent comparable ; compteur = {cur}"); sys.exit(0)
+          assert cur >= prev, f"le compteur d'essais a BAISSE : {prev} -> {cur}"
+          print(f"compteur : {prev} -> {cur}")
+          PY

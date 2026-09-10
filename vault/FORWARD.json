@@ -1,0 +1,22 @@
+{
+  "series": {
+    "1h": {
+      "bars": 11,
+      "first": "2026-09-10 00:00:00+00:00",
+      "last": "2026-09-10 10:00:00+00:00",
+      "sha256_clair": "6fe345a80bd297a4f55930ac0b2965f5d5cd9e622772e10b7c33af5ee5ef7df7",
+      "sha256_chiffre": "826eb8e7dee520db5b12a216c49494750434666efa20d1bc951214e2213444c2",
+      "maj_utc": "2026-09-10T11:58:27+00:00"
+    },
+    "15m": {
+      "bars": 47,
+      "first": "2026-09-10 00:00:00+00:00",
+      "last": "2026-09-10 11:30:00+00:00",
+      "sha256_clair": "7c902e352658ee51ab1e152bd3aece1e0276d9bdfcc9d4615f1f81c625cf5e04",
+      "sha256_chiffre": "e5cb617707ec0e1c71d2505c91dbf50a826ab078b0327a127269a0c51e4762c2",
+      "maj_utc": "2026-09-10T11:58:28+00:00"
+    }
+  },
+  "freeze_date": "2026-09-10",
+  "note": "VAULT-F : observations posterieures au gel, seules reellement inedites. Chiffrees des la collecte, jamais ecrites en clair."
+}

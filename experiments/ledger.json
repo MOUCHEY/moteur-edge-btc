@@ -1,0 +1,27 @@
+{
+  "total_configs": 136,
+  "dette_heritee": {
+    "valeur": 136,
+    "statut": "DECLARE — non verifie independamment",
+    "detail": [
+      {
+        "id": "RECOVERED-20260808",
+        "essais_declares": 120,
+        "univers": "4 actifs x 3 methodes x 5 lookbacks x 2 regimes",
+        "periode": "2018-01-01 -> 2026-08-04",
+        "reserve": "unique_btc_trial_count_verified = null : la part specifique a BTC n'est pas etablie"
+      },
+      {
+        "id": "RECOVERED-20260908",
+        "essais_declares": 16,
+        "univers": "4 regles x 4 actifs, periodes voisines egalement examinees",
+        "periode": "2018-01-01 -> 2026-09-08",
+        "reserve": "les 'periodes voisines examinees' ne sont pas comptees : le total reel est un MINORANT"
+      }
+    ],
+    "source": "sources/projet-2/registre-hypotheses.json (archive Astra, 2026-09-09)",
+    "consequence": "136 est un PLANCHER, pas une mesure. Le Deflated Sharpe calcule avec ce nombre est donc OPTIMISTE. Astra doit etablir le compte reel a partir des archives ; d'ici la, tout DSR publie porte cette reserve.",
+    "ne_jamais": "remettre ce compteur a zero, ni le recalculer 'proprement' en repartant du depot seul"
+  },
+  "runs": []
+}

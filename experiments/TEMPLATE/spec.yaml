@@ -1,0 +1,21 @@
+id: EXP-XXXX
+titre: ""
+auteur: astra
+
+data:
+  interval: 1h            # 1h | 15m
+
+signal:
+  entry_long: null        # "(a > {p}) & (b < 2)" — operateurs & | ~ uniquement
+  entry_short: null
+
+exit:
+  mode: horizon           # horizon | bracket
+  horizon: 6
+  # stop_atr: 1.0
+  # target_atr: 2.0
+  # atr_col: atr_48
+
+params: {}                # 3 parametres libres MAXIMUM (regle G1)
+
+budget_essais: 1          # doit etre >= au produit cartesien de params

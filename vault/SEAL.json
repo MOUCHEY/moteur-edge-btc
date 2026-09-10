@@ -1,0 +1,33 @@
+{
+  "vault_start": "2025-09-01",
+  "series": [
+    {
+      "interval": "15m",
+      "public_bars": 281374,
+      "public_last": "2025-08-31 23:45:00+00:00",
+      "public_sha256": "ae76657bd330469c5c4214e8870c4c6fd3f1ec70a4cd44939a1e6dfb28258b03",
+      "vault_bars": 35040,
+      "vault_first": "2025-09-01 00:00:00+00:00",
+      "vault_last": "2026-08-31 23:45:00+00:00",
+      "vault_sha256_clair": "3e75e81877b62df150b108730d313ef801aecca64664513b6fdb3c45343cafd7",
+      "vault_sha256_chiffre": "e7adba4811911c815e31a1d2089e286161258dc6a9ddaba8945c2bbc60f19ed4",
+      "fichier_chiffre": "BTCUSDT-15m.csv.enc",
+      "note_public": "hash du fichier produit par data/fetch.py \u2014 reference reproductible. Le hash du coffre, lui, porte sur la serialisation faite au moment du scellement."
+    },
+    {
+      "interval": "1h",
+      "public_bars": 70357,
+      "public_last": "2025-08-31 23:00:00+00:00",
+      "public_sha256": "3e0a24443966f096cbedab01a6851bda4a0e84a9f39b4ed5d3d3f2ab48783800",
+      "vault_bars": 8760,
+      "vault_first": "2025-09-01 00:00:00+00:00",
+      "vault_last": "2026-08-31 23:00:00+00:00",
+      "vault_sha256_clair": "82fa9b94deb70b059747f25f1b6ab94b1dc57d0ce5fa0958b025aaab57e78efd",
+      "vault_sha256_chiffre": "13714368e20f02f888be72af0e7472be3d065c9bbeae8b7b5f904234a0960fbb",
+      "fichier_chiffre": "BTCUSDT-1h.csv.enc",
+      "note_public": "hash du fichier produit par data/fetch.py \u2014 reference reproductible. Le hash du coffre, lui, porte sur la serialisation faite au moment du scellement."
+    }
+  ],
+  "clef": "/Users/admin/.moteur-edge-btc/vault.key",
+  "note": "la clef n'est pas versionnee et n'a jamais ete affichee"
+}

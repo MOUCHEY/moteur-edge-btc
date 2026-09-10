@@ -1,0 +1,25 @@
+{
+  "exp": "EXP-0000",
+  "spec_hash": "4b8fbc48f1b4",
+  "split": "IS",
+  "utc": "2026-09-10T12:04:59+00:00",
+  "n_configs": 9,
+  "max_t_reel": -1.4638,
+  "plancher": {
+    "n_sims_valides": 200,
+    "block": 24,
+    "remove_drift": true,
+    "p05": -0.9019185560963952,
+    "median": 0.40322766190556697,
+    "p95": 1.6374471631374987,
+    "p99": 2.479110453869235,
+    "max": 3.6213591385155057,
+    "avertissement": "block=24 > horizon=12 : les blocs conservent la structure testee, le plancher sera surestime et le test trop conservateur"
+  },
+  "verdict": {
+    "passe": false,
+    "reel": -1.463822349749387,
+    "median_bruit": 0.40322766190556697,
+    "raison": "le bruit fait mieux que le reel en mediane \u2014 la strategie est authentiquement perdante (le bruit, lui, est neutre)"
+  }
+}

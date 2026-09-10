@@ -1,0 +1,28 @@
+{
+  "source": "https://data.binance.vision/data/spot/monthly/klines",
+  "symbol": "BTCUSDT",
+  "generated_utc": "2026-09-10T12:03:37.596516+00:00",
+  "last_complete_month": "2026-08",
+  "series": [
+    {
+      "interval": "1h",
+      "file": "BTCUSDT-1h.csv.gz",
+      "sha256_canonical": "3e0a24443966f096cbedab01a6851bda4a0e84a9f39b4ed5d3d3f2ab48783800",
+      "bars": 70357,
+      "first": "2017-08-17 04:00:00+00:00",
+      "last": "2025-08-31 23:00:00+00:00",
+      "gaps": 29,
+      "months_missing": []
+    },
+    {
+      "interval": "15m",
+      "file": "BTCUSDT-15m.csv.gz",
+      "sha256_canonical": "ae76657bd330469c5c4214e8870c4c6fd3f1ec70a4cd44939a1e6dfb28258b03",
+      "bars": 281374,
+      "first": "2017-08-17 04:00:00+00:00",
+      "last": "2025-08-31 23:45:00+00:00",
+      "gaps": 32,
+      "months_missing": []
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "audited_commit": "7454850c1328d41bf626766825833a480a5f4139",
+  "executed_utc": "2026-09-13T13:05:04+00:00",
+  "scope": "generated fixtures only; no historical data or strategy validation",
+  "source_sha256": {
+    "engine/backtest.py": "752de67a4fe4a3d0d71771972ea84a30279c5f1ea29bdbfd1d3b97df679786c6",
+    "engine/features.py": "63e5eb6de8064726f9fd6ba9d81be27c7236e8f76208cd093fb08a0c2e12d4e6",
+    "engine/metrics.py": "3bb3922f8bf77ddc3f949b60deea46b25993d93f60732a384cf6dd7be09f0149",
+    "engine/spec.py": "77d7c9b8eeed697efd733f799e0b245e3e075c981dcdb370a2b6876267cea67a",
+    "engine/run.py": "867d06639a4cd0ac6587cbba0d93c0fc9f80e184d2587a053f0c642f91446d42",
+    "engine/attack.py": "e44bec3b4d25b90e2258733cb943a82f1d92f22dbd0ab8264a8a4bcb4e257413",
+    "engine/data.py": "fb1ef43e4820b995c93faae6dbad726c0043fe3f730cf43c42059df3d80df1aa",
+    "engine/costs.py": "78606dd5c44be6edee85b3c9b4c7b86f6039d6b5c55c7aad33b1945647d9e86e",
+    "tests/test_mecanismes.py": "fc4ee288a0193241dd5a34e9db6255c521c99a37124661e1199e7fa751df10cd",
+    "requirements.txt": "63b8e891adfa96bbba5cef8e220b308e93de7203c9c79cd57e72aef3cfe68f91"
+  },
+  "reproducer_sha256": "23bc7eef52d4dc2d1f2fca8d91f9b7f79ef7779eaaedd77468d85d38a89b2084",
+  "environment": {
+    "python": "3.13.3",
+    "numpy": "2.2.6",
+    "pandas": "2.2.3",
+    "scipy": "1.15.3"
+  },
+  "results": {
+    "future_signal_accepted": {
+      "finding_id": "E01",
+      "expected_defect": "Future signal accepted; every generated trade has positive net return.",
+      "reproduced": true,
+      "observed": {
+        "spec_errors": [],
+        "trades": 196,
+        "min_net_bps": 0.030182436365766563,
+        "fraction_positive": 1.0,
+        "fixture_note": "open=close; zero costs isolate the causal defect"
+      }
+    },
+    "one_bar_future_feature_passes_causality_check": {
+      "finding_id": "E02",
+      "expected_defect": "The detector accepts the explicitly injected next-close feature.",
+      "reproduced": true,
+      "observed": {
+        "detector_accepted": true,
+        "injected_feature": "close.shift(-1)",
+        "bars": 600,
+        "corruption_cut": 300
+      }
+    },
+    "future_high_on_timeout_bar_used": {
+      "finding_id": "E03",
+      "expected_defect": "The target at 102 replaces the scheduled timeout open at 100.",
+      "reproduced": true,
+      "observed": {
+        "trade": {
+          "entry_ts": "2020-01-01T01:00:00+00:00",
+          "exit_ts": "2020-01-01T02:00:00+00:00",
+          "side": 1,
+          "entry": 100.0,
+          "exit": 102.0,
+          "bars_held": 1,
+          "gross_bps": 200.00000000000017,
+          "cost_bps": 0.0,
+          "net_bps": 200.00000000000017,
+          "reason": "target"
+        },
+        "timeout_open": 100.0,
+        "timeout_bar_high": 103.0
+      }
+    },
+    "gap_stop_filled_above_available_market": {
+      "finding_id": "E04",
+      "expected_defect": "The stop fills at 99 although the gap bar high is only 92.",
+      "reproduced": true,
+      "observed": {
+        "trade": {
+          "entry_ts": "2020-01-01T01:00:00+00:00",
+          "exit_ts": "2020-01-01T02:00:00+00:00",
+          "side": 1,
+          "entry": 100.0,
+          "exit": 99.0,
+          "bars_held": 1,
+          "gross_bps": -100.00000000000009,
+          "cost_bps": 0.0,
+          "net_bps": -100.00000000000009,
+          "reason": "stop"
+        },
+        "gap_bar_open": 90.0,
+        "gap_bar_high": 92.0,
+        "gap_bar_low": 88.0
+      }
+    },
+    "gap_trade_accepted_and_undercharged": {
+      "finding_id": "E05",
+      "expected_defect": "24 elapsed hours count as one hour and incur 1 bp instead of 24 bps funding.",
+      "reproduced": true,
+      "observed": {
+        "elapsed_hours": 24.0,
+        "bars_held": 1,
+        "cost_bps": 1.0,
+        "expected_funding_bps_for_elapsed_time": 24.0
+      }
+    },
+    "runtime_spec_mutation_changes_no_hash": {
+      "finding_id": "E06",
+      "expected_defect": "Changing the live horizon from 1 to 200 leaves the hash unchanged.",
+      "reproduced": true,
+      "observed": {
+        "same_hash": true,
+        "horizon": 200,
+        "raw_horizon": 1
+      }
+    },
+    "negative_bracket_distances_accepted": {
+      "finding_id": "E07",
+      "expected_defect": "Negative stop and target distances produce no validation error.",
+      "reproduced": true,
+      "observed": {
+        "stop_atr": -1.0,
+        "target_atr": -2.0,
+        "spec_errors": []
+      }
+    },
+    "initial_loss_missing_from_drawdown": {
+      "finding_id": "E08",
+      "expected_defect": "Reported drawdown is zero, while including initial equity gives a loss.",
+      "reproduced": true,
+      "observed": {
+        "reported": {
+          "annees": 0.01,
+          "trades_par_an": 365.2,
+          "heures_exposees_par_an": 8766.0,
+          "part_du_temps_expose": 1.0,
+          "levier_notionnel": 0.11,
+          "notionnelle_par_trade": 1124.0,
+          "cagr": -0.8441,
+          "sharpe_annualise": -11.057,
+          "max_drawdown": 0.0,
+          "pertes_consecutives_max": 1,
+          "hypotheses": "risque 1.0%/trade, equite 10000, dimensionnement sur le 10e centile des pertes"
+        },
+        "drawdown_with_initial_equity": -0.011235955056179803
+      }
+    }
+  },
+  "all_expected_defects_reproduced": true,
+  "exit_code": 0
+}

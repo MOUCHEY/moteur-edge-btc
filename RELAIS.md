@@ -12,7 +12,7 @@ Vocabulaire imposé : *prévu* · *implémenté* · *exécuté* · *vérifié* �
 |---|---|---|
 | Protocole expérimental (8 portes, critères chiffrés) | **implémenté** | `PROTOCOLE.md` |
 | Registre de toutes les expériences | **implémenté** | `experiments/REGISTRE.md`, `ledger.json` |
-| Compteur d'essais non remis à zéro | **vérifié** | test `test_le_deflated_sharpe_baisse_quand_les_essais_montent` + garde CI |
+| Compteur d'essais non remis à zéro | **vérifié** en local | test `test_le_deflated_sharpe_baisse_quand_les_essais_montent` ; garde CI écrite mais **jamais exécutée sur GitHub** (compte bloqué, voir `ci/README.md`) |
 | Versions figées des candidates + filiation | **implémenté** | hash de spec ; `test_le_hash_change_si_la_spec_change` |
 | Rapports d'attaque séparés des réponses | **implémenté** | `RED_TEAM.md`, `.github/ISSUE_TEMPLATE/` |
 | Budgets d'essais et règles d'arrêt | **vérifié** | `spec.validate()` refuse grille > budget et > 3 paramètres |

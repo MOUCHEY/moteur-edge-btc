@@ -68,3 +68,46 @@ J'avais écrit dans une issue GitHub que notre détecteur serait désactivé sou
 `python -O`. **Faux :** `raise AssertionError` n'est pas supprimé par `-O`, seul le
 mot-clé `assert` l'est. Vérifié par exécution, puis l'issue a été corrigée
 explicitement plutôt que réécrite en silence.
+
+## 2026-09-10 — Scope `workflow` manquant : le push est clair, l'API ment
+
+**Symptôme au push :** `refusing to allow an OAuth App to create or update workflow
+.github/workflows/protocole.yml without 'workflow' scope`. Message explicite.
+
+**Symptôme via l'API Contents :** `{"message":"Not Found", "status":"404"}` sur
+`PUT repos/:owner/:repo/contents/.github/workflows/...`. **Le 404 masque un refus de
+permission**, pas un chemin erroné — et fait perdre du temps à vérifier le chemin.
+
+**Il n'y a pas de contournement.** Ni le push, ni l'API Contents ne créent un fichier
+sous `.github/workflows/` sans le scope. Seul `gh auth refresh -s workflow` le donne,
+et c'est un flux OAuth interactif : un agent ne peut pas l'accorder à la place de
+l'utilisateur.
+
+**Ce qu'on peut faire en attendant :** garder le workflow hors de `.github/workflows/`,
+et **rejouer ses étapes localement** en extrayant les blocs `run:` du YAML. Ça valide
+la logique avant activation.
+
+**Deux pièges du YAML de workflow repérés au passage :**
+- `on:` est parsé en booléen `True` par YAML 1.1 — chercher la clé `True`, pas `"on"`.
+- Le runner fournit `python`, pas un Mac. Écrire `python3` rend le workflow rejouable
+  à l'identique des deux côtés.
+
+## 2026-09-13 — `gh auth refresh` : passer outre le « Press Enter » qui n'ouvre rien
+
+Dans le terminal intégré de l'app, `gh auth refresh -s workflow` affiche un code puis
+« Press Enter to open github.com… ». Entrée n'ouvre **aucun** navigateur, sans message
+d'erreur, et le code expire.
+
+Qui marche : lancer la commande **sans terminal interactif** (`</dev/null`, en
+arrière-plan). `gh` saute alors la question, affiche le code et l'URL, puis attend
+l'autorisation tout seul. Ouvrir la page soi-même avec `open -a "<navigateur>" URL`.
+L'utilisateur n'a plus qu'à saisir le code et cliquer Authorize.
+
+Piège côté utilisateur : « we couldn't find anything » = le code a été tapé dans une
+barre de **recherche** (navigateur ou GitHub), pas dans les cases *Device Activation*.
+
+## 2026-09-13 — Un run GitHub Actions rouge peut n'avoir rien exécuté
+
+Compte bloqué pour facturation → run en `failure`, **0 étape**, `log not found`, même
+sur un dépôt public. Toujours compter les étapes exécutées avant d'imputer un échec
+au code : `gh run view <id> --json jobs -q '.jobs[].steps|length'`.

@@ -12,7 +12,7 @@ Vocabulaire imposé : *prévu* · *implémenté* · *exécuté* · *vérifié* �
 |---|---|---|
 | Protocole expérimental (8 portes, critères chiffrés) | **implémenté** | `PROTOCOLE.md` |
 | Registre de toutes les expériences | **implémenté** | `experiments/REGISTRE.md`, `ledger.json` |
-| Compteur d'essais non remis à zéro | **vérifié** | garde CI exécutée sur GitHub — **décorative au premier run** (clone à 1 commit), corrigée, couverte par 4 tests `GardeFousCI` ; limite : force-push non bloqué (voir `ci/README.md`) |
+| Compteur d'essais non remis à zéro | **vérifié** | garde CI exécutée sur GitHub — **décorative au premier run** (clone à 1 commit), corrigée, couverte par 4 tests `GardeFousCI` ; force-push et suppression de `main` bloqués (voir `ci/README.md`) |
 | Versions figées des candidates + filiation | **implémenté** | hash de spec ; `test_le_hash_change_si_la_spec_change` |
 | Rapports d'attaque séparés des réponses | **implémenté** | `RED_TEAM.md`, `.github/ISSUE_TEMPLATE/` |
 | Budgets d'essais et règles d'arrêt | **vérifié** | `spec.validate()` refuse grille > budget et > 3 paramètres |
@@ -136,8 +136,9 @@ Je le signale parce que c'est le type de défaut que tu dois chercher chez moi a
 effaçable rendrait le Deflated Sharpe de toute ta future stratégie optimiste, sans
 aucune alarme.
 
-**Limite ouverte :** `main` n'est pas protégée, un force-push réécrivant l'historique
-reste possible. Décision de Jeunathan.
+**Protection de `main` activée** avec l'accord de Jeunathan : réécriture forcée et
+suppression refusées, sans exception, vérifiées par l'usage sur une branche jetable. La
+règle elle-même reste supprimable par le compte propriétaire. Détail : `ci/README.md`.
 
 **Rien ne change pour ta prochaine expérience** : l'issue #6 (H1 et H2 au format G0)
 reste la suite attendue.

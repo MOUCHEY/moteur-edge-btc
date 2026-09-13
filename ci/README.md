@@ -8,6 +8,7 @@
 | Exécution sur GitHub | **fonctionne** depuis le 13/09/2026 (blocage de facturation du compte levé) |
 | Premier run réel | [34766511829](https://github.com/MOUCHEY/moteur-edge-btc/actions/runs/34766511829), tentative 2 : 11 étapes, succès, 26 tests |
 | Défaut révélé par ce run | le contrôle du compteur était **décoratif sur GitHub** — corrigé, voir plus bas |
+| Protection de `main` | **active** : réécriture forcée et suppression refusées, sans exception — vérifié par l'usage |
 | Rejeu local | `python3 ci/rejouer_local.py` |
 
 ## Le défaut révélé par le premier vrai run
@@ -43,14 +44,33 @@ conditions exactes de GitHub révélaient la cécité.
    l'ancien contrôle détectait déjà une baisse. Ils garantissent que la correction n'a
    cassé ni cette détection, ni le cas normal.
 
-## Limite connue, non corrigée
+## Protection de `main` — active depuis le 13 septembre 2026
 
-La branche `main` **n'est pas protégée** et aucun ruleset n'est défini (vérifié le
-13/09/2026). Un `git push --force` qui réécrit l'historique peut faire disparaître les
-états antérieurs du compteur : le contrôle ne verrait alors que l'historique réécrit.
+Ruleset `protection-main` : **réécriture forcée et suppression refusées**, **aucune
+exception**, administrateur compris. Astra et Claude poussent avec le même compte
+propriétaire : une exception pour l'administrateur rendrait la règle inopérante contre
+eux.
 
-La parade est une règle de protection interdisant le force-push sur `main`. C'est un
-réglage du dépôt : décision de Jeunathan.
+Vérifié **par l'usage**, pas seulement par la configuration. Le test a été mené sur une
+branche jetable protégée par une règle strictement identique, pour ne jamais risquer
+`main` :
+
+| Opération | Attendu | Obtenu |
+|---|---|---|
+| Envoi normal | accepté | accepté |
+| `git push --force` | refusé | refusé — `GH013 … Cannot force-push to this branch` |
+| Suppression de la branche | refusée | refusée — `GH013 … Cannot delete this branch` |
+
+GitHub confirme que ces deux règles s'appliquent à `main`
+(`gh api repos/MOUCHEY/moteur-edge-btc/rules/branches/main`).
+
+### Ce que la protection ne couvre pas
+
+- Le compte propriétaire peut **supprimer ou désactiver la règle elle-même**, par les
+  réglages ou par l'API. La protection rend une réécriture de l'historique délibérée,
+  elle ne la rend pas impossible.
+- Les envois directs sur `main` restent autorisés, sans pull request ni attente de la
+  CI. C'est un choix : garder simple le circuit Astra ↔ Claude.
 
 ## Interpréter un run rouge
 

@@ -129,3 +129,20 @@ développeur, pas le garde-fou.
 
 **Réflexe à garder :** lire la sortie d'un contrôle vert, pas seulement sa couleur.
 La ligne « pas d'etat precedent comparable » était visible dès le premier run.
+
+## 2026-09-13 — Tester une protection de branche sans risquer la branche protégée
+
+Une règle affichée « active » ne prouve pas qu'elle bloque. Méthode sans danger : créer
+une **copie strictement identique** de la règle sur une branche jetable, y tenter
+l'envoi normal (doit passer), le force-push et la suppression (doivent être refusés
+avec `GH013`), puis supprimer la copie et la branche.
+
+`bypass_actors: []` est indispensable quand les agents poussent avec le compte
+propriétaire : une exception pour l'administrateur exempte précisément ceux que la règle
+doit contenir.
+
+## 2026-09-13 — zsh mange le « :r » de `"$SHA:refs/heads/x"`
+
+Sous zsh, `$VAR:r` est un **modificateur** (retirer l'extension), pas « la variable puis
+deux-points ». `git push origin "$OLD:refs/heads/x"` est devenu `…efs/heads/x` et a
+échoué avant de contacter le serveur. Écrire `"${OLD}:refs/heads/x"`.

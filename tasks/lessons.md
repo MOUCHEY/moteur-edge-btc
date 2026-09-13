@@ -111,3 +111,21 @@ barre de **recherche** (navigateur ou GitHub), pas dans les cases *Device Activa
 Compte bloqué pour facturation → run en `failure`, **0 étape**, `log not found`, même
 sur un dépôt public. Toujours compter les étapes exécutées avant d'imputer un échec
 au code : `gh run view <id> --json jobs -q '.jobs[].steps|length'`.
+
+## 2026-09-13 — Le premier run vert était un faux vert
+
+**Constat :** sur GitHub, le contrôle « le compteur d'essais ne redescend jamais » a
+affiché `pas d'etat precedent comparable ; compteur = 136` et il est passé. Reproduit dans
+un clone à un commit : il passait aussi avec le compteur **remis à zéro**.
+
+**Cause :** `actions/checkout` récupère un seul commit par défaut (`fetch-depth: 1`). Le
+contrôle lisait `HEAD~1` et, ne le trouvant pas, sortait par un `except` en code 0.
+Localement tout allait bien : le dépôt local a l'historique complet.
+
+**Règle :** un garde-fou qui ne peut pas voir ses données doit **échouer**, jamais
+passer. Et on teste un garde-fou **dans les conditions exactes où il tourne** (ici :
+clone superficiel) et **avec un sabotage** — sinon on teste l'environnement du
+développeur, pas le garde-fou.
+
+**Réflexe à garder :** lire la sortie d'un contrôle vert, pas seulement sa couleur.
+La ligne « pas d'etat precedent comparable » était visible dès le premier run.

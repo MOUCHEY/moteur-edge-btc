@@ -97,7 +97,7 @@ vérifié : une altération se voit.
 ```bash
 pip install -r requirements.txt
 python3 data/fetch.py                      # données, vérifiées et hashées
-python3 -m unittest discover -s tests -v   # 26 tests des mécanismes du protocole
+python3 -m unittest discover -s tests -v   # 30 tests des mécanismes du protocole
 python3 -m engine.run experiments/EXP-0000-calibration/spec.yaml --split IS
 python3 -m engine.attack experiments/EXP-0000-calibration/spec.yaml --params '{"fen":72,"seuil":2.0}'
 ```
@@ -159,7 +159,7 @@ que toute stratégie proposée ici doit battre.
 |---|---|
 | Harness | opérationnel, test anti-lookahead automatique |
 | Données publiques | 70 357 barres 1h + 281 374 barres 15m, 29 et 32 gaps |
-| Tests des mécanismes | **26, 0 échec** |
+| Tests des mécanismes | **30, 0 échec** — exécutés aussi par la CI GitHub |
 | Coffres | scellés le 2026-09-10, **0 ouverture** |
 | Compteur d'essais | **136** (dette héritée déclarée, minorant) |
 | Stratégies passées en G7 | **0** |

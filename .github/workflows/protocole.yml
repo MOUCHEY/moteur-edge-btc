@@ -15,6 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 0 = tout l'historique. Par defaut GitHub ne recupere qu'UN commit, et le
+          # controle du compteur ne voyait alors rien a comparer — il passait au vert
+          # meme avec un compteur remis a zero (constate le 13/09/2026).
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -64,15 +69,29 @@ jobs:
       - name: Le compteur d'essais ne redescend jamais
         run: |
           python3 - <<'PY'
-          import json, pathlib, subprocess, sys
-          cur = json.loads(pathlib.Path("experiments/ledger.json").read_text())["total_configs"]
-          try:
-              prev_raw = subprocess.run(
-                  ["git", "show", "HEAD~1:experiments/ledger.json"],
-                  capture_output=True, text=True, check=True).stdout
-              prev = json.loads(prev_raw)["total_configs"]
-          except Exception:
-              print(f"pas d'etat precedent comparable ; compteur = {cur}"); sys.exit(0)
-          assert cur >= prev, f"le compteur d'essais a BAISSE : {prev} -> {cur}"
-          print(f"compteur : {prev} -> {cur}")
+          import json, subprocess, sys
+
+          def git(*a):
+              return subprocess.run(["git", *a], capture_output=True, text=True, check=True).stdout.strip()
+
+          # Un garde-fou qui ne voit pas ses donnees doit ECHOUER, jamais passer.
+          if git("rev-parse", "--is-shallow-repository") == "true":
+              sys.exit("ECHEC : clone superficiel, l'historique du compteur est invisible. "
+                       "Le checkout doit utiliser fetch-depth: 0.")
+
+          # Monotonie sur TOUT l'historique, pas seulement le commit precedent :
+          # un push de plusieurs commits ne doit pas pouvoir cacher une baisse.
+          etats = []
+          for sha in git("log", "--reverse", "--format=%H", "--", "experiments/ledger.json").split():
+              try:
+                  v = json.loads(git("show", f"{sha}:experiments/ledger.json"))["total_configs"]
+              except subprocess.CalledProcessError:
+                  continue  # commit qui supprime le fichier
+              etats.append((sha[:7], v))
+          etats.append(("courant", json.loads(open("experiments/ledger.json").read())["total_configs"]))
+
+          for (a, va), (b, vb) in zip(etats, etats[1:]):
+              if vb < va:
+                  sys.exit(f"ECHEC : le compteur d'essais a BAISSE entre {a} et {b} : {va} -> {vb}")
+          print(f"compteur monotone sur {len(etats)} etats : " + " -> ".join(str(v) for _, v in etats))
           PY

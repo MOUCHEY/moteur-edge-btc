@@ -5,39 +5,66 @@
 | | |
 |---|---|
 | Workflow | **actif** : `.github/workflows/protocole.yml`, déclenché à chaque push sur `main` |
-| Permission `workflow` du jeton | accordée le 13/09/2026 |
-| Exécution sur GitHub | **bloquée par GitHub avant démarrage** |
-| Vérifications en local | **4 étapes passent** sur `55d3cff` |
+| Exécution sur GitHub | **fonctionne** depuis le 13/09/2026 (blocage de facturation du compte levé) |
+| Premier run réel | [34766511829](https://github.com/MOUCHEY/moteur-edge-btc/actions/runs/34766511829), tentative 2 : 11 étapes, succès, 26 tests |
+| Défaut révélé par ce run | le contrôle du compteur était **décoratif sur GitHub** — corrigé, voir plus bas |
+| Rejeu local | `python3 ci/rejouer_local.py` |
 
-Le premier run ([34766359464](https://github.com/MOUCHEY/moteur-edge-btc/actions/runs/34766359464))
-porte l'annotation *« The job was not started because your account is locked due to a
-billing issue »*. Le runner a exécuté **0 étape** et n'a produit aucun journal.
+## Le défaut révélé par le premier vrai run
 
-## À lire avant d'interpréter un run rouge
+Le run était vert. Il ne l'était pas pour la bonne raison.
 
-Tant que ce blocage n'est pas levé, **chaque push produit un run en échec qui n'a rien
-exécuté**. Un run rouge ne signale donc pas un défaut du protocole.
+`actions/checkout` ne récupère par défaut **qu'un seul commit**. Le contrôle « le
+compteur d'essais ne redescend jamais » comparait le compteur avec celui du commit
+précédent — qu'il ne voyait donc pas. Il a affiché :
 
-Avant de conclure quoi que ce soit, vérifier le nombre d'étapes réellement exécutées :
+```
+pas d'etat precedent comparable ; compteur = 136
+```
+
+et il est **passé**. Reproduit dans un clone à un commit : avec le compteur **remis à
+zéro**, il passait aussi. Le garde-fou censé empêcher qu'on efface le budget de
+recherche ne gardait rien, et la coche verte le masquait.
+
+Localement il fonctionnait, parce que le dépôt local a tout l'historique. Seules les
+conditions exactes de GitHub révélaient la cécité.
+
+**Correction :**
+
+1. `fetch-depth: 0` : GitHub récupère tout l'historique.
+2. Un clone superficiel fait désormais **échouer** le contrôle. Un garde-fou qui ne voit
+   pas ses données ne doit jamais passer.
+3. Monotonie vérifiée sur **tout** l'historique du compteur, pas seulement le dernier
+   commit : un push de plusieurs commits ne peut plus cacher une baisse.
+4. Quatre tests (`GardeFousCI`) rejouent **l'étape exacte du workflow** dans des clones —
+   superficiel, saboté, intact. Vérifié contre l'ancienne version : **deux d'entre eux
+   échouent** (`fetch-depth` absent, clone superficiel qui passe) — ce sont ceux qui visent
+   le défaut. Les deux autres y passent aussi, et c'est attendu : en clone complet,
+   l'ancien contrôle détectait déjà une baisse. Ils garantissent que la correction n'a
+   cassé ni cette détection, ni le cas normal.
+
+## Limite connue, non corrigée
+
+La branche `main` **n'est pas protégée** et aucun ruleset n'est défini (vérifié le
+13/09/2026). Un `git push --force` qui réécrit l'historique peut faire disparaître les
+états antérieurs du compteur : le contrôle ne verrait alors que l'historique réécrit.
+
+La parade est une règle de protection interdisant le force-push sur `main`. C'est un
+réglage du dépôt : décision de Jeunathan.
+
+## Interpréter un run rouge
+
+Vérifier d'abord le nombre d'étapes réellement exécutées :
 
 ```bash
 gh run view <id> --json jobs -q '.jobs[] | "\(.name): \(.steps|length) etapes"'
 ```
 
-`0 etapes` = le job n'a pas démarré. Seul un run avec des étapes exécutées dit quelque
-chose du code.
+`0 etapes` = le job n'a pas démarré (cas du blocage de facturation du 13/09/2026) : le
+run ne dit rien du code.
 
-## Ce que je ne sais pas
+## Avertissement non bloquant
 
-La cause du blocage de facturation. Le jeton utilisé ne donne pas accès aux
-informations de facturation du compte. C'est à régler par le titulaire du compte, sur
-`github.com/settings/billing`.
-
-## En attendant : rejouer localement
-
-```bash
-python3 ci/rejouer_local.py
-```
-
-Le script lit les commandes **dans le fichier du workflow** et les exécute une par une.
-Ce qui passe en local est exactement ce que GitHub aurait lancé.
+GitHub signale que `actions/checkout@v4` et `actions/setup-python@v5` visent Node.js 20,
+déprécié. Les versions `v7.0.1` et `v7.0.0` existent (vérifié le 13/09/2026). La montée de
+version majeure **n'a pas été faite** : leurs changements n'ont pas été lus.

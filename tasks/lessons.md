@@ -91,3 +91,23 @@ la logique avant activation.
 - `on:` est parsé en booléen `True` par YAML 1.1 — chercher la clé `True`, pas `"on"`.
 - Le runner fournit `python`, pas un Mac. Écrire `python3` rend le workflow rejouable
   à l'identique des deux côtés.
+
+## 2026-09-13 — `gh auth refresh` : passer outre le « Press Enter » qui n'ouvre rien
+
+Dans le terminal intégré de l'app, `gh auth refresh -s workflow` affiche un code puis
+« Press Enter to open github.com… ». Entrée n'ouvre **aucun** navigateur, sans message
+d'erreur, et le code expire.
+
+Qui marche : lancer la commande **sans terminal interactif** (`</dev/null`, en
+arrière-plan). `gh` saute alors la question, affiche le code et l'URL, puis attend
+l'autorisation tout seul. Ouvrir la page soi-même avec `open -a "<navigateur>" URL`.
+L'utilisateur n'a plus qu'à saisir le code et cliquer Authorize.
+
+Piège côté utilisateur : « we couldn't find anything » = le code a été tapé dans une
+barre de **recherche** (navigateur ou GitHub), pas dans les cases *Device Activation*.
+
+## 2026-09-13 — Un run GitHub Actions rouge peut n'avoir rien exécuté
+
+Compte bloqué pour facturation → run en `failure`, **0 étape**, `log not found`, même
+sur un dépôt public. Toujours compter les étapes exécutées avant d'imputer un échec
+au code : `gh run view <id> --json jobs -q '.jobs[].steps|length'`.

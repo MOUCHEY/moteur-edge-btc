@@ -83,8 +83,22 @@ gh run view <id> --json jobs -q '.jobs[] | "\(.name): \(.steps|length) etapes"'
 `0 etapes` = le job n'a pas démarré (cas du blocage de facturation du 13/09/2026) : le
 run ne dit rien du code.
 
-## Avertissement non bloquant
+## Versions des actions — mises à jour le 14 septembre 2026
 
-GitHub signale que `actions/checkout@v4` et `actions/setup-python@v5` visent Node.js 20,
-déprécié. Les versions `v7.0.1` et `v7.0.0` existent (vérifié le 13/09/2026). La montée de
-version majeure **n'a pas été faite** : leurs changements n'ont pas été lus.
+`actions/checkout@v7` et `actions/setup-python@v7`, qui tournent sur **Node.js 24**. Les
+versions précédentes (`v4`, `v5`) visaient Node.js 20, déprécié par GitHub.
+
+Vérifié avant la mise à jour, et pas supposé :
+
+| Point | Constat |
+|---|---|
+| Node.js utilisé (`runs.using` du `action.yml`) | `node24` pour les deux |
+| Runner minimum exigé depuis checkout v5 / setup-python v6 | 2.327.1 — notre runner : **2.337.0** |
+| `fetch-depth` en checkout v7 (le garde-fou du compteur en dépend) | présent, même sens : `0` = tout l'historique |
+| `python-version` et `cache` en setup-python v7 | présents |
+| `pip-install`, retiré en setup-python v7 | non utilisé chez nous |
+| checkout v6 : identifiants stockés dans un fichier séparé | sans effet : le workflow ne pousse rien et ne lit que l'historique local |
+| checkout v7 : refus des forks en `pull_request_target` / `workflow_run` | sans effet : nous déclenchons sur `push` et `pull_request` |
+
+Les actions sont référencées par tag majeur (`@v7`), comme avant. Les épingler par SHA
+complet serait plus sûr contre un tag déplacé ; ce n'est pas fait.

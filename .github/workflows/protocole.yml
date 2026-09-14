@@ -14,14 +14,14 @@ jobs:
   mecanismes:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # 0 = tout l'historique. Par defaut GitHub ne recupere qu'UN commit, et le
           # controle du compteur ne voyait alors rien a comparer — il passait au vert
           # meme avec un compteur remis a zero (constate le 13/09/2026).
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip

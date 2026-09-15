@@ -261,6 +261,64 @@ class IntegriteDesDonnees(unittest.TestCase):
             self.assertTrue((df["close"] >= df["low"]).all())
 
 
+class GardeFousCI(unittest.TestCase):
+    """
+    Un garde-fou de CI doit ECHOUER quand il ne peut pas verifier, pas passer.
+
+    Constate le 13/09/2026 : sur GitHub (clone a 1 commit par defaut), le controle
+    du compteur ne voyait aucun historique, affichait « pas d'etat precedent » et
+    passait au vert — y compris avec un compteur remis a zero. Ces tests rejouent
+    l'etape EXACTE du workflow dans des clones, pour qu'elle ne puisse plus
+    redevenir decorative sans que la suite le signale.
+    """
+
+    WORKFLOW = ROOT / ".github" / "workflows" / "protocole.yml"
+
+    def _steps(self):
+        import yaml
+        return yaml.safe_load(self.WORKFLOW.read_text())["jobs"]["mecanismes"]["steps"]
+
+    def _etape_compteur(self):
+        return next(s["run"] for s in self._steps() if s.get("name", "").startswith("Le compteur"))
+
+    def _clone(self, depth=None):
+        import shutil
+        import subprocess
+        import tempfile
+        tmp = Path(tempfile.mkdtemp(prefix="edge-ci-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        cmd = ["git", "clone", "-q"] + (["--depth", str(depth)] if depth else [])
+        subprocess.run(cmd + [f"file://{ROOT}", str(tmp / "r")], check=True, capture_output=True)
+        return tmp / "r"
+
+    def _lancer(self, depot):
+        import subprocess
+        return subprocess.run(["bash", "-c", self._etape_compteur()], cwd=depot,
+                              capture_output=True, text=True)
+
+    def test_le_checkout_recupere_tout_l_historique(self):
+        co = next(s for s in self._steps() if str(s.get("uses", "")).startswith("actions/checkout"))
+        self.assertEqual((co.get("with") or {}).get("fetch-depth"), 0,
+                         "sans fetch-depth: 0, le controle du compteur est aveugle sur GitHub")
+
+    def test_un_clone_superficiel_fait_echouer_le_controle(self):
+        r = self._lancer(self._clone(depth=1))
+        self.assertNotEqual(r.returncode, 0, "un controle aveugle ne doit pas passer : " + r.stdout)
+
+    def test_un_compteur_remis_a_zero_fait_echouer_le_controle(self):
+        depot = self._clone()
+        p = depot / "experiments" / "ledger.json"
+        led = json.loads(p.read_text())
+        led["total_configs"] = 0
+        p.write_text(json.dumps(led))
+        r = self._lancer(depot)
+        self.assertNotEqual(r.returncode, 0, "une baisse du compteur doit etre refusee : " + r.stdout)
+
+    def test_un_compteur_intact_passe(self):
+        r = self._lancer(self._clone())
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+
 class Statistique(unittest.TestCase):
     def test_p_empirique_n_est_jamais_nul(self):
         """Un p de 0 est impossible : la correction +1 doit etre appliquee."""

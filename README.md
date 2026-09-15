@@ -43,4 +43,4 @@ python3 -m engine.run experiments/EXP-NOUVELLE/spec.yaml --split IS
 
 Le [registre](experiments/REGISTRE.md), le [snapshot de provenance](experiments/HISTORIQUE.json) et les événements conservent les essais connus et les incertitudes. **136 n'est pas un total vérifié d'essais uniques ou indépendants.** Les neuf variantes d'EXP-0000 et les simulations sont distinguées.
 
-Un résultat sur bougies et coûts supposés ne prouve ni l'exécution future ni un avantage déployable. Le journal est protégé contre les erreurs ordinaires et vérifié contre Git ; une vraie séparation des accès au coffre reste à construire. La CI distante avait été bloquée avant démarrage par GitHub ; seules ses exécutions effectivement observées doivent être annoncées comme réussies.
+Un résultat sur bougies et coûts supposés ne prouve ni l'exécution future ni un avantage déployable. Le journal est protégé contre les erreurs ordinaires et vérifié contre Git ; une vraie séparation des accès au coffre reste à construire. La CI historique a été réactivée sur GitHub. La réussite de cette nouvelle qualification doit être vérifiée sur son propre commit, séparément des anciens runs.

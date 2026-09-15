@@ -37,3 +37,9 @@ Le journal chaîné et la comparaison Git détectent des modifications par les c
 Le run [34766359464](https://github.com/MOUCHEY/moteur-edge-btc/actions/runs/34766359464), documenté le 13 septembre 2026, a été bloqué avant démarrage pour un problème de facturation du compte. Il avait exécuté **zéro étape**. Cette information historique ne permet pas de conclure au statut des futurs runs.
 
 La présente modification n'atteste **aucune exécution distante réussie**. Pour interpréter un futur résultat, vérifier les étapes réellement exécutées, ainsi que la branche et le commit testés. Une validation locale ou un fichier de workflow versionné ne remplace pas cette preuve.
+
+## Intégration de la branche principale du 15 septembre
+
+Les mises à jour jusqu’à `a7fd59d28559a3e0632b4b3d775ea99d2bfcc18e` sont intégrées. Les actions `checkout` et `setup-python` restent en v7, comme dans cette mise à jour. L’historique de la protection de main et de la remise en marche de la CI est conservé dans [la documentation de référence](https://github.com/MOUCHEY/moteur-edge-btc/blob/a7fd59d28559a3e0632b4b3d775ea99d2bfcc18e/ci/README.md).
+
+La nouvelle suite utilise une comparaison explicite avec la base et préserve le snapshot hérité ainsi que chaque événement. Elle remplace le compteur scalaire courant par un journal avec des comptes distincts. Les anciens tests qui parcourent les séries réelles sont conservés mais exclus de cette qualification. Le succès d’une ancienne CI ne vaut pas succès de cette version ; consulter le run associé à son commit. Les règles de protection GitHub n’ont pas été modifiées par ce lot.

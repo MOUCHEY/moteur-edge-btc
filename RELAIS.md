@@ -1,3 +1,5 @@
+> Relais courant du 15 septembre 2026 : voir [QUALIFICATION](docs/QUALIFICATION-2026-09-15.md) et [PROTOCOLE](PROTOCOLE.md). Le texte ci-dessous est le relais historique, conservé pour provenance. Les annonces anciennes de portes et de compte d’essais ne qualifient pas les nouvelles exécutions.
+
 # Note de relais — Claude → Astra
 
 **Étape 1 : socle du dépôt.** 10 septembre 2026.
@@ -12,7 +14,7 @@ Vocabulaire imposé : *prévu* · *implémenté* · *exécuté* · *vérifié* �
 |---|---|---|
 | Protocole expérimental (8 portes, critères chiffrés) | **implémenté** | `PROTOCOLE.md` |
 | Registre de toutes les expériences | **implémenté** | `experiments/REGISTRE.md`, `ledger.json` |
-| Compteur d'essais non remis à zéro | **vérifié** en local | test `test_le_deflated_sharpe_baisse_quand_les_essais_montent` ; garde CI écrite mais **jamais exécutée sur GitHub** (compte bloqué, voir `ci/README.md`) |
+| Compteur d'essais non remis à zéro | **vérifié** | garde CI exécutée sur GitHub — **décorative au premier run** (clone à 1 commit), corrigée, couverte par 4 tests `GardeFousCI` ; force-push et suppression de `main` bloqués (voir `ci/README.md`) |
 | Versions figées des candidates + filiation | **implémenté** | hash de spec ; `test_le_hash_change_si_la_spec_change` |
 | Rapports d'attaque séparés des réponses | **implémenté** | `RED_TEAM.md`, `.github/ISSUE_TEMPLATE/` |
 | Budgets d'essais et règles d'arrêt | **vérifié** | `spec.validate()` refuse grille > budget et > 3 paramètres |
@@ -115,3 +117,30 @@ Sur #2 : j'y avais d'abord écrit que notre détecteur de lookahead serait désa
 sous `python -O`. C'était faux, je l'ai mesuré, et l'issue porte la correction —
 `raise AssertionError` n'est pas supprimé par `-O`, seul le mot-clé `assert` l'est,
 et il n'y en a aucun dans `engine/` ni `data/`.
+
+---
+
+## Mise à jour — 13 septembre 2026
+
+**La CI tourne sur GitHub.** Le blocage de facturation du compte est levé. Premier run
+réel : 11 étapes, succès, 26 tests.
+
+**Et ce premier run vert a révélé un défaut dans mon propre harness.** Le contrôle
+« le compteur d'essais ne redescend jamais » ne voyait pas l'historique sur GitHub
+(clone à un seul commit par défaut). Il passait sans rien comparer — reproduit : il
+passait aussi avec le compteur remis à zéro. Corrigé, et la suite compte désormais
+**30 tests** : les 4 nouveaux rejouent l'étape exacte du workflow dans des clones.
+Contre l'ancienne version, deux échouent — ceux qui visent le défaut ; les deux autres
+vérifient que la correction n'a rien cassé. Détail : `ci/README.md`.
+
+Je le signale parce que c'est le type de défaut que tu dois chercher chez moi aussi :
+**un garde-fou qui passe quand il ne peut pas vérifier.** Un compteur d'essais
+effaçable rendrait le Deflated Sharpe de toute ta future stratégie optimiste, sans
+aucune alarme.
+
+**Protection de `main` activée** avec l'accord de Jeunathan : réécriture forcée et
+suppression refusées, sans exception, vérifiées par l'usage sur une branche jetable. La
+règle elle-même reste supprimable par le compte propriétaire. Détail : `ci/README.md`.
+
+**Rien ne change pour ta prochaine expérience** : l'issue #6 (H1 et H2 au format G0)
+reste la suite attendue.

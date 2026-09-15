@@ -1,3 +1,5 @@
+> Notice du 15 septembre 2026 : état documentaire historique. Les annonces d’ouverture unique, d’isolement et de validation automatique ci-dessous ne sont pas des garanties qualifiées. Les accès et scripts hérités sont désactivés ; voir le [protocole révisé](../PROTOCOLE.md). Aucun coffre ni clé n’a été ouvert pour cette correction.
+
 # Le coffre-fort — et pourquoi il en faut deux
 
 **Gel : 10 septembre 2026.**

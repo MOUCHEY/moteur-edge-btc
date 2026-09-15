@@ -1,43 +1,39 @@
-# CI du protocole
+# Qualification synthétique et conservation du journal
 
-## Statut — 13 septembre 2026
+## Ce que contrôle cette version
 
-| | |
-|---|---|
-| Workflow | **actif** : `.github/workflows/protocole.yml`, déclenché à chaque push sur `main` |
-| Permission `workflow` du jeton | accordée le 13/09/2026 |
-| Exécution sur GitHub | **bloquée par GitHub avant démarrage** |
-| Vérifications en local | **4 étapes passent** sur `55d3cff` |
+Le workflow `.github/workflows/protocole.yml` et la commande locale appellent le même programme, `ci/rejouer_local.py`. Il vérifie :
 
-Le premier run ([34766359464](https://github.com/MOUCHEY/moteur-edge-btc/actions/runs/34766359464))
-porte l'annotation *« The job was not started because your account is locked due to a
-billing issue »*. Le runner a exécuté **0 étape** et n'a produit aucun journal.
+- la disponibilité d'une base Git explicitement identifiée ;
+- la conservation **octet pour octet** de `experiments/ledger.json`, qui reste un historique hérité ;
+- la conservation de chaque fichier `experiments/events/*.json` présent dans la base ;
+- la validité du nouveau journal avec `engine.journal.read_events` ;
+- les seuls tests `tests/test_*_synthetic.py`, sur fixtures et fichiers temporaires.
 
-## À lire avant d'interpréter un run rouge
+La base est le commit de base de la PR, le commit précédent indiqué par l'événement push, ou le SHA fourni pour un lancement manuel. Une base absente, nulle, introuvable ou sans ledger est un **échec**, jamais une initialisation implicite. Le nombre de configurations conservées décrit des essais ; il ne mesure pas un nombre de tests statistiquement indépendants.
 
-Tant que ce blocage n'est pas levé, **chaque push produit un run en échec qui n'a rien
-exécuté**. Un run rouge ne signale donc pas un défaut du protocole.
+Le checkout du workflow est limité au code, aux tests et au journal. Les anciens tests `test_mecanismes.py`, les anciens scripts d'audit, les données de marché et les coffres ne sont pas exécutés ou chargés. Aucun contrôle de clé ni déchiffrement n'est inclus. OOS, VAULT et `split=None` restent indisponibles dans le chargeur ; seul un fichier physiquement réservé à IS peut être chargé en dehors de cette qualification synthétique. Aucun jeu IS n'est préparé par la CI.
 
-Avant de conclure quoi que ce soit, vérifier le nombre d'étapes réellement exécutées :
+## Exécution locale
+
+Avec les dépendances installées :
 
 ```bash
-gh run view <id> --json jobs -q '.jobs[] | "\(.name): \(.steps|length) etapes"'
+python3 ci/rejouer_local.py --base <SHA-complet-de-la-base>
 ```
 
-`0 etapes` = le job n'a pas démarré. Seul un run avec des étapes exécutées dit quelque
-chose du code.
-
-## Ce que je ne sais pas
-
-La cause du blocage de facturation. Le jeton utilisé ne donne pas accès aux
-informations de facturation du compte. C'est à régler par le titulaire du compte, sur
-`github.com/settings/billing`.
-
-## En attendant : rejouer localement
+Pour vérifier uniquement les mécanismes synthétiques :
 
 ```bash
-python3 ci/rejouer_local.py
+python3 ci/rejouer_local.py --tests-only
 ```
 
-Le script lit les commandes **dans le fichier du workflow** et les exécute une par une.
-Ce qui passe en local est exactement ce que GitHub aurait lancé.
+Le second mode **ne valide pas la conservation du journal**. Il n'est pas utilisé par le workflow. Une réussite locale démontre uniquement les contrôles effectivement exécutés dans cet environnement, pas une réussite des actions GitHub de checkout, de préparation de Python ou d'installation des dépendances.
+
+Le journal chaîné et la comparaison Git détectent des modifications par les chemins contrôlés. Ils ne constituent pas un stockage extérieur inviolable : la revue des changements et un contrôle requis à la fusion restent nécessaires. Les propriétés d'isolation et d'ouverture unique d'un futur gardien du coffre ne sont pas qualifiées par cette CI.
+
+## État distant connu
+
+Le run [34766359464](https://github.com/MOUCHEY/moteur-edge-btc/actions/runs/34766359464), documenté le 13 septembre 2026, a été bloqué avant démarrage pour un problème de facturation du compte. Il avait exécuté **zéro étape**. Cette information historique ne permet pas de conclure au statut des futurs runs.
+
+La présente modification n'atteste **aucune exécution distante réussie**. Pour interpréter un futur résultat, vérifier les étapes réellement exécutées, ainsi que la branche et le commit testés. Une validation locale ou un fichier de workflow versionné ne remplace pas cette preuve.

@@ -10,6 +10,7 @@ mourir, et retourne un verdict booleen sur un critere pre-ecrit.
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,7 +20,10 @@ import pandas as pd
 from scipy import stats as sps
 
 from . import backtest, features, metrics, spec as spec_mod
-from .data import STEP_SECONDS, load
+from .costs import DEFAULT
+from .data import STEP_SECONDS, data_fingerprint, load
+from .journal import Session, clean, digest
+from .research import EVENTS, ResearchError, g0_contract, gate_status, provenance, require_is
 
 
 def concentration(trades: pd.DataFrame) -> dict:
@@ -81,32 +85,28 @@ def chevauchement(trades: pd.DataFrame) -> dict:
     }
 
 
-def fiabilite_du_t(trades: pd.DataFrame, n_boot: int = 5000, seed: int = 3) -> dict:
-    """
-    Le t-stat suppose une distribution pas trop pathologique. Les rendements de
-    trading ont des queues epaisses ; on verifie par bootstrap plutot que de
-    faire confiance a la table de Student.
-    """
-    x = trades["net_bps"].to_numpy(float)
+def fiabilite_du_t(trades: pd.DataFrame, n_boot: int = 1000, seed: int = 3, block: int = 10) -> dict:
+    """Sensibilite au bootstrap par blocs de trades, sans certification G2/G4."""
+    x = trades['net_bps'].to_numpy(float)
     n = len(x)
-    if n < 30:
-        return {"note": "moins de 30 trades", "passe": False}
+    if n < 30 or not np.isfinite(x).all():
+        return {'note': 'moins de 30 trades ou rendement non fini', 'qualified': False}
+    if type(block) is not int or not 1 <= block <= n or type(n_boot) is not int or n_boot < 1:
+        raise ValueError('parametres bootstrap invalides')
     rng = np.random.default_rng(seed)
-    means = np.array([rng.choice(x, n, replace=True).mean() for _ in range(n_boot)])
+    means = []
+    for _ in range(n_boot):
+        starts = rng.integers(0, n - block + 1, size=int(np.ceil(n / block)))
+        sample = np.concatenate([x[j:j+block] for j in starts])[:n]
+        means.append(float(sample.mean()))
     lo, hi = np.percentile(means, [2.5, 97.5])
-    k = float(sps.kurtosis(x, fisher=False))
-    return {
-        "moyenne_bps": round(float(x.mean()), 3),
-        "ic95_bootstrap": [round(float(lo), 3), round(float(hi), 3)],
-        "kurtosis": round(k, 2),
-        "part_bootstraps_negatifs": round(float((means < 0).mean()), 4),
-        "passe": bool(lo > 0),
-        "critere": "borne basse de l'IC 95 % bootstrap > 0",
-        "avertissement": "kurtosis > 10 : le t-stat de Student est peu fiable ici" if k > 10 else None,
-    }
+    return {'moyenne_bps': float(x.mean()), 'intervalle_bootstrap_descriptif': [float(lo), float(hi)],
+            'seed': seed, 'block': block, 'replications': n_boot, 'bootstrap_means': means,
+            'qualified': False, 'passe': False,
+            'note': 'Bloc de trades, hypothese de dependance non certifiee. Ne constitue pas une porte.'}
 
 
-def decalage_entree(df, feats, sp, params) -> dict:
+def decalage_entree(df, feats, sp, params, session=None) -> dict:
     """
     L'attaque la plus revelatrice.
 
@@ -119,7 +119,9 @@ def decalage_entree(df, feats, sp, params) -> dict:
     base = None
     for lag in (0, 1, 2):
         f = feats.shift(lag) if lag else feats
-        tr = backtest.run(df, f, sp, params)
+        tr = (session.evaluate(dict(params), f'attack_delay_{lag}',
+                               lambda: backtest.run(df, f, sp, params))
+              if session else backtest.run(df, f, sp, params))
         m = metrics.research(tr, STEP_SECONDS[sp.interval])
         out[f"lag_{lag}"] = {"n": m["n_trades"],
                              "net_bps": round(m["net_bps"], 3) if m["n_trades"] else None,
@@ -143,6 +145,8 @@ def heures(trades: pd.DataFrame) -> dict:
     """Les trades se concentrent-ils sur des heures peu liquides ?"""
     h = pd.to_datetime(trades["entry_ts"], utc=True).dt.hour
     vc = h.value_counts(normalize=True).sort_index()
+    if vc.empty:
+        return {'note': 'aucun trade', 'qualified': False}
     top = vc.idxmax()
     return {"heure_dominante_utc": int(top), "part": round(float(vc.max()), 3),
             "passe": bool(vc.max() < 0.25),
@@ -154,47 +158,50 @@ ATTAQUES = ["concentration", "par_annee", "chevauchement", "fiabilite_du_t",
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("spec")
-    ap.add_argument("--params", default="{}")
-    ap.add_argument("--split", default="IS")
+    ap = argparse.ArgumentParser(description='Diagnostics IS sur la configuration centrale preenregistree')
+    ap.add_argument('spec')
+    ap.add_argument('--params')
+    ap.add_argument('--split', default='IS')
     a = ap.parse_args()
-
     sp = spec_mod.load(a.spec)
-    params = json.loads(a.params)
-    df = load(sp.interval, a.split)
-    feats = features.build(df)
-    features.assert_causal(df, feats)
-    trades = backtest.run(df, feats, sp, params)
+    try:
+        with Session(EVENTS, 'diagnostic_attack', sp.hash, a.split, {'provenance': provenance()}) as session:
+            require_is(a.split)
+            if sp.validate():
+                raise ResearchError('; '.join(sp.validate()))
+            g0 = g0_contract(sp, a.spec)
+            params = json.loads(a.params) if a.params is not None else g0['central_params']
+            if sp.validate_params(params) or params != g0['central_params']:
+                raise ResearchError('Les attaques doivent conserver les parametres centraux preenregistres.')
+            session.bind_contract(g0, sp.to_dict(), asdict(DEFAULT))
+            df = load(sp.interval, a.split)
+            session.bind_data(data_fingerprint(df))
+            feats = features.build(df)
+            features.assert_causal(df, feats)
+            trades = session.evaluate(params, 'attack_baseline', lambda: backtest.run(df, feats, sp, params))
+            attacks = {}
+            if len(trades) >= 20:
+                attacks = {'concentration': concentration(trades), 'par_annee': par_annee(trades),
+                           'chevauchement': chevauchement(trades), 'fiabilite_du_t': fiabilite_du_t(trades),
+                           'decalage_entree': decalage_entree(df, feats, sp, params, session), 'heures': heures(trades)}
+                # Un seuil generique n'est pas une prediction preenregistree.
+                for diagnostic in attacks.values():
+                    if 'passe' in diagnostic:
+                        diagnostic['condition_descriptive'] = diagnostic.pop('passe')
+                    diagnostic['qualified_gate'] = False
+            report = {'exp': sp.id, 'spec_hash': sp.hash, 'split': a.split, 'params': params,
+                      'provenance': provenance(), 'data_sha256': data_fingerprint(df),
+                      'base': metrics.research(trades, STEP_SECONDS[sp.interval]),
+                      'trades': trades.assign(entry_ts=trades.entry_ts.astype(str), exit_ts=trades.exit_ts.astype(str)).to_dict('records'),
+                      'attaques': attacks, 'gates': gate_status(),
+                      'verdict': 'DIAGNOSTIC SEULEMENT ; revue independante non effectuee'}
+            report, output = session.publish(Path(a.spec).parent / 'results', report)
+            print(json.dumps(clean(report), indent=2, allow_nan=False))
+            return 0 if len(trades) >= 20 else 1
+    except (ResearchError, ValueError, RuntimeError) as exc:
+        print(f'Diagnostic refuse/echoue : {exc}')
+        return 2
 
-    if len(trades) < 20:
-        print(json.dumps({"erreur": f"{len(trades)} trades, attaques non applicables"}, indent=2))
-        return 1
 
-    rap = {
-        "exp": sp.id, "spec_hash": sp.hash, "split": a.split, "params": params,
-        "utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "base": {k: (round(v, 4) if isinstance(v, float) and np.isfinite(v) else v)
-                 for k, v in metrics.research(trades, STEP_SECONDS[sp.interval]).items()},
-        "attaques": {
-            "concentration": concentration(trades),
-            "par_annee": par_annee(trades),
-            "chevauchement": chevauchement(trades),
-            "fiabilite_du_t": fiabilite_du_t(trades),
-            "decalage_entree": decalage_entree(df, feats, sp, params),
-            "heures": heures(trades),
-        },
-    }
-    echecs = [k for k, v in rap["attaques"].items() if not v.get("passe")]
-    rap["attaques_echouees"] = echecs
-    rap["verdict"] = "SURVIT" if not echecs else f"TOMBE sur : {', '.join(echecs)}"
-
-    d = Path(a.spec).parent / "results"
-    d.mkdir(parents=True, exist_ok=True)
-    (d / f"attaque_{a.split}_{sp.hash}.json").write_text(json.dumps(rap, indent=2, default=str) + "\n")
-    print(json.dumps(rap, indent=2, default=str))
-    return 0
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise SystemExit(main())

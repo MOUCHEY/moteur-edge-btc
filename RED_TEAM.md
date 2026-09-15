@@ -1,3 +1,5 @@
+> Notice du 15 septembre 2026 : instructions historiques. Le [protocole révisé](PROTOCOLE.md) et le [format G0](docs/PREENREGISTREMENT.md) régissent les nouvelles exécutions ; Claude n’est pas un intermédiaire obligatoire.
+
 # Red team — charte d'attaque (Claude)
 
 Mon rôle dans ce dépôt est **de faire tomber les stratégies d'Astra**, pas de les

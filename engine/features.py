@@ -74,37 +74,53 @@ def build(df: pd.DataFrame) -> pd.DataFrame:
     return f
 
 
-def assert_causal(df: pd.DataFrame, feats: pd.DataFrame, builder=None) -> None:
-    """
-    Test de fuite : on corrompt le futur et on verifie que les features n'en
-    savent rien. Une feature qui bouge a une fuite de lookahead.
+def assert_causal(df: pd.DataFrame, feats: pd.DataFrame, builder=None, *, cuts=None) -> None:
+    """Check prefix invariance, including the last available row at each cut.
 
-    `builder` est la fonction qui a produit `feats` (par defaut `build`). Le
-    passer explicitement permet de controler un pipeline enrichi : une colonne
-    presente dans `feats` mais que le builder ne reproduit pas ne peut PAS etre
-    verifiee, et une feature non verifiable doit lever plutot que passer
-    silencieusement — c'est tout l'interet du garde-fou.
+    Every column and timestamp in the future is absent from the prefix passed
+    to the builder. Index/column structure, dtypes and the missing-value mask
+    must match as well as finite values. Several positional cuts are checked;
+    this diagnostic is not a mathematical proof for every possible dataset.
     """
     builder = builder or build
+    if not isinstance(df, pd.DataFrame) or not isinstance(feats, pd.DataFrame):
+        raise AssertionError("causalite : DataFrame attendus")
     n = len(df)
-    cut = n // 2
-    tampered = df.copy()
-    for col in ("open", "high", "low", "close", "volume", "taker_buy_base", "quote_volume"):
-        tampered.loc[cut:, col] = tampered.loc[cut:, col] * 1.5
+    if n < 2:
+        raise AssertionError("causalite non verifiable avec moins de deux lignes")
+    if not df.columns.is_unique or not feats.columns.is_unique:
+        raise AssertionError("causalite : colonnes dupliquees interdites")
+    try:
+        pd.testing.assert_index_equal(feats.index, df.index, exact=True, check_names=True)
+    except AssertionError as exc:
+        raise AssertionError("causalite : index des features non aligne") from exc
 
-    f2 = builder(tampered)
-    manquantes = [c for c in feats.columns if c not in f2.columns]
-    if manquantes:
-        raise AssertionError(
-            f"features non verifiables (le builder ne les reproduit pas) : {manquantes}. "
-            "Toute feature doit passer par le builder pour etre controlee.")
-    a = feats.iloc[: cut - 1]
-    b = f2.iloc[: cut - 1]
-    leaks = []
-    for col in feats.columns:
-        x, y = a[col], b[col]
-        both = x.notna() & y.notna()
-        if both.sum() and not np.allclose(x[both], y[both], rtol=1e-9, atol=1e-12):
-            leaks.append(col)
-    if leaks:
-        raise AssertionError(f"FUITE DE LOOKAHEAD dans : {leaks}")
+    def compare(expected, actual, label):
+        if not isinstance(actual, pd.DataFrame):
+            raise AssertionError(f"causalite : builder sans DataFrame ({label})")
+        try:
+            pd.testing.assert_frame_equal(
+                expected, actual, check_dtype=True, check_index_type=True,
+                check_column_type=True, check_names=True, check_exact=False,
+                rtol=1e-9, atol=1e-12,
+            )
+        except AssertionError as exc:
+            raise AssertionError(
+                f"FUITE DE LOOKAHEAD ou features non reproductibles ({label}) : {exc}"
+            ) from exc
+
+    # First verify that the declared builder actually produced every feature.
+    compare(feats, builder(df.copy(deep=True)), "reproduction complete")
+    if cuts is None:
+        selected = sorted({1, n // 4, n // 2, (3 * n) // 4, n - 1} - {0})
+    else:
+        try:
+            selected = list(cuts)
+        except TypeError as exc:
+            raise AssertionError("causalite : coupes positionnelles attendues") from exc
+        if not selected or any(type(cut) is not int or not 1 <= cut < n for cut in selected):
+            raise AssertionError("causalite : chaque coupe doit etre un entier entre 1 et n-1")
+        selected = sorted(set(selected))
+    for cut in selected:
+        prefix = df.iloc[:cut].copy(deep=True)
+        compare(feats.iloc[:cut], builder(prefix), f"prefixe de {cut} lignes")

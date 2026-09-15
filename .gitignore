@@ -5,3 +5,5 @@ __pycache__/
 data/raw/
 *.key
 vault/OPEN_AUTHORISATION
+experiments/events/.lock
+experiments/events/.pending-*

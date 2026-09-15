@@ -1,0 +1,34 @@
+{
+  "calibration": {
+    "declared_real_configurations": 9,
+    "id": "EXP-0000",
+    "real_backtests_rerun_in_this_correction": false,
+    "simulation_paths_declared": 600,
+    "simulations_are_real_configurations": false,
+    "sources": {
+      "report_sha256": "5a0465bdd1430a7a573dd5851646fd2b1430a2ba6a12ee064431c84d6096cabc",
+      "spec_yaml_sha256": "8e275c8331fb23951a2d44d6522aa920869b77252d30ace9bac182dc3162e2f5"
+    },
+    "spec_grid_configurations_verified_without_data": 9,
+    "status": "Descriptive historical result from an audited defective engine; G4 not qualified."
+  },
+  "historical_independent_trials": null,
+  "historical_unique_trials": null,
+  "legacy_declarations": [
+    {
+      "btc_unique_count": null,
+      "declared_count": 120,
+      "id": "RECOVERED-20260808"
+    },
+    {
+      "btc_unique_count": null,
+      "declared_count": 16,
+      "id": "RECOVERED-20260908"
+    }
+  ],
+  "legacy_ledger_sha256": "a7ff7f0d22ed8e2d106e8e52fbbf7fbd842004a822a51301cac7ffc41cbb6ea5",
+  "overlap_between_legacy_declarations": "unknown",
+  "recorded_date": "2026-09-15",
+  "schema_version": 1,
+  "sum_136_status": "Unverified scenario; neither a proved lower bound nor independent-trial count."
+}

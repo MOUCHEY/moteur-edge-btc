@@ -64,5 +64,7 @@ def run(df: pd.DataFrame, feats: pd.DataFrame, spec, backtest_fn, metric_fn,
         "part_folds_positifs": round(len(positifs) / len(valides), 3) if valides else None,
         "net_bps_moyen_oos": round(float(np.mean([f["test_net_bps"] for f in valides])), 3) if valides else None,
         "stabilite_parametres": round(float(stabilite), 3) if valides else None,
-        "passe_G5": bool(valides and len(positifs) / len(valides) >= 0.60),
+        "passe_G5": False,
+        "diagnostic_60pct": bool(len(valides) == n_folds and len(positifs) / n_folds >= 0.60),
+        "note": "Walk-forward de recherche : aucun droit OOS ou passage G5 attribue.",
     }

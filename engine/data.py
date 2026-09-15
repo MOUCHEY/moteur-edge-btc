@@ -1,14 +1,15 @@
-"""
-Chargement des donnees + decoupage IS / OOS / VAULT.
+"""Chargement IS uniquement ; OOS et coffres restent indisponibles.
 
-Le decoupage est FIGE (voir PROTOCOLE.md section 1). Les bornes sont ici et
-nulle part ailleurs : une strategie qui veut d'autres bornes doit modifier ce
-fichier, ce qui apparait dans le diff et donc dans la revue.
+Le gardien isole n'est pas qualifie. Aucun fichier d'autorisation local ne leve
+cette interdiction. Les fichiers historiques melant IS et OOS ne sont jamais
+utilises par ce chargeur.
 """
 from __future__ import annotations
 
+import gzip
 import hashlib
-import json
+import io
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -17,136 +18,155 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 PROC = ROOT / "data" / "processed"
 
-# --- Decoupage fige le 2026-09-10 -------------------------------------------
+# Bornes [debut inclus, fin exclue]. Ces metadonnees n'ouvrent aucun acces.
 SPLITS = {
-    "IS":    ("2017-08-17", "2022-12-31"),   # bac a sable, acces libre
-    "OOS":   ("2023-01-01", "2025-08-31"),   # 1 ouverture par strategie
-    "VAULT": ("2025-09-01", "2099-12-31"),   # 1 ouverture pour tout le projet
+    "IS": ("2017-08-17", "2023-01-01"),
+    "OOS": ("2023-01-01", "2025-09-01"),
+    "VAULT": ("2025-09-01", "2100-01-01"),
 }
-
 STEP_SECONDS = {"1h": 3600, "15m": 900, "5m": 300, "1d": 86400}
+MIN_BARS = 500
 
 
 class DataError(RuntimeError):
-    """Leve quand une donnee est douteuse. On prefere planter que mesurer faux."""
+    """Une donnee douteuse ou un acces indisponible bloque le chargement."""
+
+
+def _window_mask(timestamps: pd.Series, split: str) -> pd.Series:
+    """Calcul pur des bornes semi-ouvertes ; ne charge aucune donnee."""
+    if split not in SPLITS:
+        raise DataError(f"split inconnu : {split}")
+    lo, hi = (pd.Timestamp(s, tz="UTC") for s in SPLITS[split])
+    return (timestamps >= lo) & (timestamps < hi)
 
 
 def load(interval: str = "1h", split: str | None = "IS") -> pd.DataFrame:
-    """Charge la serie et applique les garde-fous. `split=None` -> tout sauf VAULT."""
-    if split == "VAULT":
-        if not _vault_authorised():
-            raise DataError(
-                "VAULT scelle. Ouverture = decision de Jeunathan (PROTOCOLE.md G6). "
-                "Poser le fichier vault/OPEN_AUTHORISATION pour lever le verrou."
-            )
-        return _open_vault(interval)
+    """Lit une seule fois les octets d'un fichier physiquement reserve a IS.
 
-    path = PROC / f"BTCUSDT-{interval}.csv.gz"
-    if not path.exists():
-        raise DataError(f"{path} absent — lancer `python3 data/fetch.py` d'abord")
+    Le fichier entier doit etre dans IS : aucune ligne hors bornes n'est filtree
+    silencieusement. Aucune preparation des donnees historiques n'est effectuee.
+    """
+    # Refuser AVANT toute consultation de chemin, manifeste ou autorisation.
+    if split != "IS":
+        raise DataError("Acces indisponible : seul IS est chargeable ; OOS, VAULT et split=None sont bloques.")
+    if interval not in STEP_SECONDS:
+        raise DataError(f"intervalle inconnu : {interval}")
 
-    df = pd.read_csv(path, parse_dates=["ts"])
-    df["ts"] = pd.to_datetime(df["ts"], utc=True)
-    df = df.sort_values("ts").reset_index(drop=True)
-
+    directory = PROC / "IS"
+    path = directory / f"BTCUSDT-{interval}.csv.gz"
+    if PROC.is_symlink() or directory.is_symlink() or path.is_symlink():
+        raise DataError("Un fichier IS ou son repertoire ne peut pas etre un lien symbolique.")
+    if not path.is_file():
+        raise DataError("Jeu IS physiquement isole absent. Les anciens fichiers IS/OOS ne sont pas admis.")
+    try:
+        raw = path.read_bytes()
+        csv_bytes = gzip.decompress(raw)
+        df = pd.read_csv(io.BytesIO(csv_bytes))
+    except (OSError, EOFError, ValueError, zlib.error, pd.errors.ParserError) as exc:
+        raise DataError("Fichier IS illisible ou CSV compresse invalide.") from exc
+    if "ts" not in df.columns:
+        raise DataError("Colonne ts absente.")
+    # Une heure sans fuseau ne devient pas implicitement UTC.
+    time_text = df["ts"].astype("string")
+    if not time_text.str.contains(r"(?:Z|[+-]\d{2}:\d{2})$", regex=True, na=False).all():
+        raise DataError("Chaque horodatage doit avoir un fuseau explicite.")
+    try:
+        df["ts"] = pd.to_datetime(time_text, utc=True, errors="raise", format="ISO8601")
+    except (ValueError, TypeError) as exc:
+        raise DataError("Horodatages ISO-8601 invalides.") from exc
+    # Ne pas trier : un ordre source incorrect doit etre signale.
     _sanity(df, interval)
-
-    if split is None:
-        lo, hi = SPLITS["IS"][0], SPLITS["OOS"][1]
-    else:
-        if split not in SPLITS:
-            raise DataError(f"split inconnu : {split}")
-        if split == "VAULT" and not _vault_authorised():
-            raise DataError(
-                "VAULT scelle. Ouverture = decision de Jeunathan (PROTOCOLE.md G6). "
-                "Poser le fichier vault/OPEN_AUTHORISATION pour lever le verrou."
-            )
-        lo, hi = SPLITS[split]
-
-    m = (df["ts"] >= pd.Timestamp(lo, tz="UTC")) & (df["ts"] <= pd.Timestamp(hi, tz="UTC") + pd.Timedelta(days=1))
-    out = df.loc[m].reset_index(drop=True)
-    if len(out) < 500:
-        raise DataError(f"split {split} : {len(out)} barres, trop peu pour mesurer")
-    return out
+    if not _window_mask(df["ts"], "IS").all():
+        raise DataError("Le fichier reserve a IS contient au moins une ligne hors IS.")
+    if len(df) < MIN_BARS:
+        raise DataError(f"split IS : {len(df)} barres, minimum requis {MIN_BARS}")
+    df.attrs.update({
+        "data_sha256": hashlib.sha256(raw).hexdigest(),
+        "csv_sha256": hashlib.sha256(csv_bytes).hexdigest(),
+        "data_bytes": len(raw),
+        "data_path": str(path),
+        "interval": interval,
+        "split": "IS",
+    })
+    return df
 
 
 def _open_vault(interval: str) -> pd.DataFrame:
-    """Dechiffre le coffre. Journalise l'ouverture : elle est unique et definitive."""
-    import io, json, subprocess
-    from datetime import datetime, timezone
-
-    seal = json.loads((ROOT / "vault" / "SEAL.json").read_text())
-    key = Path(seal["clef"]).expanduser()
-    if not key.exists():
-        raise DataError(f"clef absente : {key}")
-    enc = ROOT / "vault" / f"BTCUSDT-{interval}.csv.enc"
-    r = subprocess.run(
-        ["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2", "-iter", "200000",
-         "-pass", f"file:{key}"],
-        input=enc.read_bytes(), capture_output=True, check=True)
-
-    attendu = next(s["vault_sha256_clair"] for s in seal["series"] if s["interval"] == interval)
-    got = hashlib.sha256(r.stdout).hexdigest()
-    if got != attendu:
-        raise DataError(f"le coffre a ete altere : {got} != {attendu}")
-
-    log = ROOT / "vault" / "OUVERTURES.log"
-    with open(log, "a") as fh:
-        fh.write(f"{datetime.now(timezone.utc).isoformat(timespec='seconds')}  {interval}  sha={got[:16]}\n")
-
-    df = pd.read_csv(io.BytesIO(r.stdout), parse_dates=["ts"])
-    df["ts"] = pd.to_datetime(df["ts"], utc=True)
-    return df.sort_values("ts").reset_index(drop=True)
+    """Indisponible meme en appel direct : aucun dechiffrement ni journal local."""
+    raise DataError("Coffre indisponible : gardien isole et validation prospective non qualifies.")
 
 
 def _vault_authorised() -> bool:
-    return (ROOT / "vault" / "OPEN_AUTHORISATION").exists()
+    """Compatibilite sans aucun acces au systeme de fichiers."""
+    return False
 
 
 def _sanity(df: pd.DataFrame, interval: str) -> None:
-    """Les erreurs qui ne levent aucune exception toutes seules."""
-    if df["ts"].duplicated().any():
-        raise DataError("horodatages dupliques")
-    if not df["ts"].is_monotonic_increasing:
-        raise DataError("horodatages non croissants")
+    """Exige des observations finies, coherentes, ordonnees et continues."""
+    if interval not in STEP_SECONDS:
+        raise DataError(f"intervalle inconnu : {interval}")
+    required = {"ts", "open", "high", "low", "close", "volume"}
+    if required - set(df.columns):
+        raise DataError(f"Colonnes absentes : {sorted(required - set(df.columns))}")
+    if df.empty:
+        raise DataError("Serie vide.")
+    ts = df["ts"]
+    if not isinstance(ts.dtype, pd.DatetimeTZDtype) or ts.isna().any():
+        raise DataError("Horodatages manquants ou sans fuseau.")
+    if ts.duplicated().any() or not ts.is_monotonic_increasing:
+        raise DataError("Horodatages dupliques ou non croissants.")
 
-    bad = df[(df["high"] < df["low"]) | (df["close"] > df["high"]) | (df["close"] < df["low"])]
-    if len(bad):
-        raise DataError(f"{len(bad)} barres OHLC incoherentes")
-
+    numeric = ["open", "high", "low", "close", "volume"]
+    numeric += [c for c in ("trades", "taker_buy_base", "quote_volume") if c in df.columns]
+    for c in numeric:
+        if not pd.api.types.is_numeric_dtype(df[c]) or pd.api.types.is_bool_dtype(df[c]):
+            raise DataError(f"Colonne non numerique : {c}")
+        if not np.isfinite(df[c].to_numpy(dtype=float, na_value=np.nan)).all():
+            raise DataError(f"Valeur non finie dans {c}")
     if (df[["open", "high", "low", "close"]] <= 0).any().any():
-        raise DataError("prix nul ou negatif")
+        raise DataError("Prix nul ou negatif.")
+    bad = ((df["high"] < df["low"])
+           | (df["open"] > df["high"]) | (df["open"] < df["low"])
+           | (df["close"] > df["high"]) | (df["close"] < df["low"]))
+    if bad.any():
+        raise DataError("Barres OHLC incoherentes, open compris.")
+    for c in ("volume", "quote_volume", "taker_buy_base", "trades"):
+        if c in df.columns and (df[c] < 0).any():
+            raise DataError(f"Valeur negative dans {c}")
+    if "taker_buy_base" in df.columns and (df["taker_buy_base"] > df["volume"]).any():
+        raise DataError("Volume acheteur superieur au volume total.")
+    if "trades" in df.columns and (df["trades"] % 1 != 0).any():
+        raise DataError("Nombre de trades non entier.")
 
-    # Un gap non signale se fait passer pour un mouvement intra-barre
     step = STEP_SECONDS[interval]
-    d = df["ts"].diff().dt.total_seconds().dropna()
-    gaps = int((d != step).sum())
-    if gaps / len(df) > 0.02:
-        raise DataError(f"{gaps} gaps ({gaps/len(df):.1%}) — serie trop trouee")
-    df.attrs["gaps"] = gaps
+    utc = ts.dt.tz_convert("UTC")
+    if (utc != utc.dt.floor(f"{step}s")).any():
+        raise DataError("Horodatages non alignes sur l'intervalle.")
+    if (utc.diff().iloc[1:] != pd.Timedelta(seconds=step)).any():
+        raise DataError("Serie discontinue : un trou exige une qualification explicite.")
+    df.attrs["gaps"] = 0
 
 
 def forward_return(df: pd.DataFrame, k: int, interval: str) -> pd.Series:
-    """
-    Rendement a k barres, rejete par HORODATAGE et pas par indice.
-
-    Sans ce filtre, un trou de 6 h dans la serie se retrouve compte comme un
-    mouvement de k barres et on mesure un gap en croyant mesurer un effet.
-    """
-    c = df["close"]
-    fwd = c.shift(-k) / c - 1.0
+    """Rendement a k barres, rejete si l'ecart temporel ne correspond pas."""
+    if isinstance(k, bool) or not isinstance(k, int) or k <= 0 or interval not in STEP_SECONDS:
+        raise DataError("Horizon ou intervalle invalide.")
+    fwd = df["close"].shift(-k) / df["close"] - 1.0
     ecart = df["ts"].shift(-k) - df["ts"]
     attendu = pd.Timedelta(seconds=STEP_SECONDS[interval] * k)
     return fwd.where(ecart == attendu)
 
 
-def data_fingerprint(interval: str) -> str:
-    """Hash du manifeste : identifie sans ambiguite le jeu de donnees d'un run."""
-    mf = ROOT / "data" / "MANIFEST.json"
-    if not mf.exists():
-        return "no-manifest"
-    m = json.loads(mf.read_text())
-    for s in m.get("series", []):
-        if s["interval"] == interval:
-            return s["sha256_canonical"][:16]
-    return "unknown"
+def data_fingerprint(df: pd.DataFrame) -> str:
+    """Empreinte complete des octets lus pour CE chargement, sans nouvelle lecture.
+
+    Cette empreinte identifie la source avant transformation du DataFrame ; elle
+    ne remplace pas l'empreinte du code ni celle de la specification.
+    """
+    if not isinstance(df, pd.DataFrame):
+        raise DataError("data_fingerprint exige le DataFrame issu du chargement.")
+    digest = df.attrs.get("data_sha256")
+    if (not isinstance(digest, str) or len(digest) != 64
+            or any(c not in "0123456789abcdef" for c in digest)):
+        raise DataError("Empreinte du chargement absente ou invalide.")
+    return digest

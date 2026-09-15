@@ -1,176 +1,60 @@
-# Protocole — moteur EDGE RENTABLE / BTC
+# Protocole de recherche — révision du 15 septembre 2026
 
-Ce document est la **loi du dépôt**. Il prime sur toute opinion, la mienne comprise.
-Il ne se modifie pas au milieu d'une expérience : un changement de règle est un
-commit séparé, daté, justifié, et il **ne s'applique pas rétroactivement** aux
-expériences déjà closes.
+Cette révision corrige les garanties excessives du socle du 10 septembre à la suite de l'[audit](audits/2026-09-11-relais/README.md). Elle s'applique aux nouvelles exécutions. Les expériences anciennes, leurs résultats et leur protocole restent dans l'historique Git ; aucun succès ancien n'est requalifié automatiquement.
 
----
+## Organisation
 
-## 0. Le principe qui gouverne tout
+L'utilisateur a demandé de poursuivre sans dépendre de Claude. Astra assure donc les corrections de l'infrastructure et les expériences. Une seconde revue peut intervenir à un jalon important ; l'exécution de diagnostics par le même agent ne vaut pas revue indépendante.
 
-> On ne cherche pas une stratégie rentable. On cherche à **détruire** des
-> stratégies jusqu'à ce qu'il en reste une qui refuse de mourir.
+La découverte et la falsification restent des étapes distinctes : hypothèse explicite, test minimal préenregistré, contrat figé, attaques et réponses mesurées. Une modification de stratégie ou de critères ouvre une nouvelle expérience. Corriger un bug du moteur conserve les anciennes preuves et identifie la nouvelle version. Aucune candidate survivante est une conclusion acceptable.
 
-Conséquence directe : **la découverte et la falsification ne sont jamais faites
-par le même acteur.**
+## État réellement disponible
 
-| Acteur | Rôle | Interdit absolu |
-|---|---|---|
-| **Astra** | Génère des hypothèses avec mécanisme. Écrit une spec. Répond aux attaques par de nouvelles expériences. | Élargir une grille après avoir vu un résultat. Défendre une stratégie autrement que par une mesure. |
-| **Claude** | Red team. Exécute le harness. Attaque : sur-optimisation, biais, instabilité, fuite de données. | **Réparer** une stratégie. Proposer une amélioration. Adoucir un verdict. |
-| **Jeunathan** | Arbitre. Seul à décider d'un passage de porte contesté, d'une ouverture de coffre, et de tout ce qui touche à l'argent réel. | — |
+| Étape | État et règle |
+|---|---|
+| G0 | Contrôle structurel de `G0.json` avant lecture, puis gel dans le journal. La plausibilité économique nécessite une revue ; une chaîne non vide ne la prouve pas. |
+| G1 | Mesure minimale sur IS. La configuration centrale est déclarée avant mesure. Les critères chiffrés sont descriptifs, conditionnels aux coûts supposés. |
+| G2 | Diagnostics disponibles sur cette configuration. Aucun verdict automatique « stratégie validée » ; une revue indépendante n'est pas simulée. |
+| G3 | Sensibilités temporelles et de coûts disponibles. Les prédictions propres au mécanisme restent à vérifier explicitement. |
+| G4 | **Non qualifiée.** Le bootstrap actuel mesure une sensibilité et ne peut attribuer de passage. |
+| G5 | Walk-forward de recherche disponible si préenregistré. L'accès OOS reste **indisponible**. |
+| G6 | Coffres historique et futur **indisponibles**, y compris par appel direct du chargeur. |
+| G7 | **Indisponible.** Aucun connecteur d'ordres ni argent réel dans ce lot. |
 
-Claude ne répare pas. Si une faille est réparable, c'est à Astra de le faire, dans
-une **nouvelle** expérience qui incrémente le compteur d'essais. C'est le point qui
-fait tenir tout le reste : un attaquant qui répare devient l'avocat de sa propre
-correction.
+Les portes incomplètes ne sont pas remplacées par un avertissement suivi d'une lecture. Toutes les commandes de recherche refusent OOS/VAULT avant le chargement, et le chargeur les refuse également. Un fichier local d'autorisation ne lève aucun verrou.
 
----
+## Préenregistrement et gel
 
-## 1. Découpage des données — figé le 10 septembre 2026
+Chaque nouvelle expérience contient `spec.yaml` et `G0.json`. Ce dernier fixe l'empreinte complète de la spec, l'hypothèse, le mécanisme, les prédictions, le critère d'abandon, le budget exact de configurations, les paramètres centraux et un minimum de trades (au moins 100). Ce minimum est une règle de procédure, pas une preuve universelle de puissance statistique.
 
-| Bloc | Période | Qui y touche | Combien de fois |
-|---|---|---|---|
-| **IS** (bac à sable) | 2017-08-17 → 2022-12-31 | Astra et Claude, librement | ∞ |
-| **OOS** (validation) | 2023-01-01 → 2025-08-31 | Ouvert par la porte G5 | **1 fois par stratégie** |
-| **VAULT** (coffre-fort) | 2025-09-01 → dernier mois complet | Personne | **1 fois pour tout le projet** |
+Le premier lancement valide et conserve le contrat avant de lire IS. Les suivants doivent retrouver exactement le même contrat pour le même identifiant d'expérience : G0, spec effective et coûts. La comparaison et l'écriture sont sérialisées. Tout changement exige un nouvel identifiant. La langue de signal n'admet que des opérations ponctuelles ; les agrégations et décalages temporels doivent être construits et vérifiés dans les features.
 
-Le VAULT est chiffré dans le dépôt. La clé n'est pas versionnée. Son hash est publié
-dans `vault/SEAL.md`. Ce n'est pas de la sécurité contre un adversaire — c'est un
-verrou de procédure : si quelqu'un le touche, ou refait le découpage après coup,
-ça se voit.
+Un walk-forward doit être déclaré avec `"walkforward": true`. Un bootstrap doit avoir son plan dans G0 : `bootstrap` avec `sims`, `block`, `seed`, `remove_drift`. Modifier ces choix après résultats constitue une nouvelle expérience, même si l'on ne change pas la stratégie.
 
-**Une ouverture d'OOS est irréversible.** Une stratégie dont l'OOS a été ouvert et
-qui échoue est morte. Elle ne revient pas « corrigée » : une variante corrigée est
-une nouvelle stratégie, avec un nouveau numéro, et l'OOS déjà consommé compte dans
-le budget d'essais du projet.
+G1 décrit séparément : t de la configuration centrale positif, médiane de toute la grille calculable et positive, au moins le nombre de trades déclaré, et marge nette au moins trois fois le spread supposé. Les configurations non calculables restent au dénominateur. La meilleure configuration exploratoire n'est jamais utilisée comme si elle était la configuration centrale préenregistrée.
 
----
+## Données et conventions de simulation
 
-## 2. Les portes
+Les fenêtres sont semi-ouvertes : IS `[2017-08-17, 2023-01-01)`, OOS `[2023-01-01, 2025-09-01)`. Ces dates ne confèrent aucun droit d'accès. Le chargeur IS exige un fichier physique dédié sous `data/processed/IS/`. Il refuse l'ancien fichier mélangeant IS et OOS, toute ligne hors IS, les valeurs non finies et toute discontinuité. La préparation de ce nouveau jeu est une étape séparée ; ce lot ne lit ni ne découpe les fichiers historiques.
 
-Une expérience monte les portes dans l'ordre. Elle ne saute rien. Chaque porte a un
-critère **chiffré et pré-écrit** — pas un jugement.
+Les signaux sont formés à la clôture, les entrées à l'ouverture suivante. Un timeout sort à son ouverture sans utiliser le high/low ultérieur. Un stop dépassé à l'ouverture prend le prix d'ouverture défavorable. Les barres ambiguës appliquent une convention conservatrice explicitée dans le simulateur. Sans ticks, l'heure de sortie intrabar est majorée à la fin de la barre pour le portage et l'exposition. Un horizon incomplet est exclu et compté ; il n'est pas raccourci silencieusement.
 
-### G0 — Préenregistrement (Astra)
+Les pertes initiales participent au drawdown ; une ruine est absorbante. Les scénarios de dimensionnement sont illustratifs et calculés ex post. Les coûts restent hypothétiques, y compris la différence entre Binance spot et l'instrument éventuellement exécuté.
 
-Avant toute mesure, Astra dépose `hypothesis.md` contenant :
+## Journal et provenance
 
-1. **L'hypothèse en une phrase**, falsifiable.
-2. **Le mécanisme** : *qui* perd de l'argent en face, et *pourquoi* il continue.
-   « Le backtest le montre » n'est pas un mécanisme et fait échouer G0 immédiatement.
-3. **Les prédictions de forme**, écrites AVANT de mesurer : quelles monotonies le
-   mécanisme impose (l'effet doit croître avec X, disparaître quand Y, etc.).
-4. **Le budget d'essais déclaré** : combien de configurations seront balayées.
-   Ce nombre entre dans le Deflated Sharpe. Le sous-déclarer, c'est se mentir.
-5. **Le critère d'abandon** : ce qui, mesuré, ferait renoncer Astra elle-même.
+`experiments/ledger.json` est désormais un **snapshot historique immuable**, pas le compteur courant. Ses affirmations sur 136 sont corrigées par [HISTORIQUE.json](experiments/HISTORIQUE.json). Le total historique unique et le nombre d'essais indépendants restent inconnus. Ils ne sont ni remis à zéro ni déduits d'une addition de comptes recouvrants.
 
-> Aucun chiffre de backtest ne figure dans `hypothesis.md`. S'il y en a un,
-> l'expérience est marquée `CONTAMINÉE` et son budget est décompté quand même.
+Le journal courant est `experiments/events/*.json` : tentative commencée, contrat gelé, données liées, évaluations commencées/terminées/échouées, rapport publié, tentative terminée/échouée. Un arrêt brutal laisse un événement ouvert. Chaque rapport a un nom unique ; l'écriture refuse l'écrasement. Le rapport contient un snapshot du journal **avant sa publication et la clôture du run**, explicitement étiqueté ; l'état final s'obtient en relisant les événements.
 
-### G1 — Test minimal (Claude exécute)
+Les comptes distinguent les évaluations IS, leurs identités descriptives, les répétitions, les simulations et les déclarations héritées. Les identités incluent paramètres, jeu de données et provenance du moteur. Aucun de ces comptes n'est présenté comme un nombre d'essais indépendants certifié pour le DSR.
 
-Sur **IS uniquement**. Pas d'optimisation : ≤ 3 paramètres libres, grille identique
-à celle déclarée en G0. Coûts appliqués dès la première mesure, jamais ajoutés après.
+Une chaîne d'empreintes, un verrou d'écriture et la conservation Git rendent les changements détectables par rapport à une base publiée. Ils ne protègent pas contre un utilisateur capable de réécrire tout le dépôt et ses règles. La CI doit comparer une base explicite et échouer si elle manque ; elle préserve les événements et le snapshot historique octet pour octet.
 
-Passe si **tout** est vrai :
-- [ ] `t_net > 0` sur la configuration centrale
-- [ ] **médiane des t-stats de la famille > 0** — pas seulement son maximum
-- [ ] `slippage_de_mort ≥ 3 × spread moyen`
-- [ ] ≥ 100 trades sur IS (sinon aucun test n'a de puissance)
+## Conditions restant à satisfaire
 
-La deuxième condition tue la majorité des candidats et c'est voulu. Une cellule
-brillante dans une grille de voisins négatifs est du bruit, quel que soit son t-stat.
+G4 exige un modèle nul explicite, une statistique et une procédure de sélection préenregistrées, une vérification des faux positifs et une précision Monte-Carlo documentée. Retirer une moyenne ne supprime pas la prévisibilité conditionnelle. Bonferroni ne nécessite pas l'indépendance lorsque les p-valeurs élémentaires sont valides ; le seuil `sqrt(2 log N)` est un autre objet. Le DSR courant reste non qualifié ; ce n'est pas une probabilité que l'avantage soit réel.
 
-### G2 — Red team (Claude)
+La validation finale exige une candidate, un protocole et une période admissible figés, puis un gardien isolé des agents, une ouverture atomique unique et une collecte conservant des lots immuables. Le coffre historique déjà exploré ne redevient pas vierge après chiffrement. La collecte future commencée avant le gel de la candidate ne prouve pas l'admissibilité de ses observations. Les anciens scripts de collecte/scellement sont mis hors service en attendant ce dispositif ; aucune clé ni série n'a été ouverte pour le faire.
 
-Claude applique la checklist de `RED_TEAM.md` et publie un rapport d'attaque.
-Chaque faille est classée : **fatale** (l'expérience meurt), **majeure** (Astra doit
-répondre par une mesure), **mineure** (consignée, sans blocage).
-
-Passe si : aucune faille fatale, et chaque faille majeure a reçu une **réponse
-mesurée** — pas une réponse argumentée.
-
-### G3 — Robustesse structurelle
-
-- [ ] Voisinage de paramètres positif à **≥ 75 %**
-- [ ] Positif sur les **deux moitiés temporelles** de l'IS
-- [ ] Les monotonies annoncées en G0 sont **vérifiées** (Spearman ρ > 0,7 sur celles
-      qui sont ordinales)
-- [ ] Survit à des coûts **× 1,5** et **× 2**
-
-### G4 — Plancher de bruit
-
-Le seuil théorique de tests multiples ne s'applique pas : les configurations
-partagent les mêmes données et ne sont pas indépendantes. On mesure le plancher
-au lieu de le postuler.
-
-- [ ] **Le même balayage** rejoué sur séries synthétiques (bootstrap de blocs) :
-      le résultat réel doit dépasser le **95e centile** des meilleurs résultats
-      synthétiques
-- [ ] **Permutation d'étiquettes** sur la condition (heure, régime, seuil) :
-      p empirique < 0,05, calculé en respectant les grappes de dépendance
-
-### G5 — Validation dynamique, puis OOS
-
-- [ ] **Walk-forward ancré** : profitable sur ≥ 60 % des fenêtres hors échantillon
-- [ ] **Monte-Carlo** sur l'ordre des trades : le 95e centile du drawdown reste
-      dans le budget de risque
-- [ ] **Deflated Sharpe > 0**, avec le nombre d'essais **réel** du projet entier,
-      pas celui de la seule expérience
-
-Alors, et seulement alors : **une** exécution sur OOS. Passe si `z_oos > 0` et si
-l'espérance nette par trade sur OOS est ≥ 50 % de celle de l'IS.
-
-### G6 — Coffre-fort
-
-Ouverture unique, pour **une seule** stratégie, sur décision de Jeunathan.
-Aucune modification n'est permise après. Le résultat est publié quel qu'il soit.
-
-### G7 — Réel, très petite somme
-
-Paramètres gelés. Le forward test mesure en priorité le **slippage réel contre la
-marge**, pas le taux de réussite. Toute divergence > 30 % sur le coût par trade
-arrête le test.
-
----
-
-## 3. Le budget d'essais est une ressource
-
-Le dépôt tient un **compteur global** dans `experiments/REGISTRE.md`. Chaque
-configuration testée l'incrémente — y compris celles des expériences abandonnées,
-y compris celles qu'on préférerait oublier.
-
-Ce compteur entre dans le Deflated Sharpe de **toute** stratégie évaluée ensuite.
-C'est ce qui rend le protocole honnête : plus on cherche, plus la barre monte.
-Personne ne peut « repartir de zéro ».
-
----
-
-## 4. Règles anti-triche
-
-1. **Une spec figée est figée.** Modifier une spec après avoir vu ses résultats crée
-   une nouvelle expérience et consomme du budget. Le dépôt garde les deux.
-2. **Tout ce qui est lancé est enregistré**, y compris les échecs, y compris les
-   plantages. Une expérience non publiée qui a touché les données est une fraude
-   envers soi-même.
-3. **Aucun chiffre sans mesure.** Toute valeur avancée dans un rapport doit être
-   reproductible par `python3 -m engine.run`. Une estimation est marquée comme telle.
-4. **Le silence n'est pas un succès.** Une porte non testée est une porte échouée.
-5. **Pas de p-hacking par le choix des coûts.** Le modèle de coûts est fixé dans
-   `engine/costs.py` et ne se négocie pas par expérience.
-
----
-
-## 5. Ce que ce dépôt ne peut pas faire
-
-À écrire noir sur blanc, parce que l'auto-illusion commence toujours ici :
-
-- Des bougies OHLC ne contiennent ni carnet d'ordres, ni flux, ni calendrier. Une
-  absence d'edge trouvé ici n'est pas une preuve qu'il n'y en a pas.
-- Un backtest n'a ni la latence, ni l'exécution, ni le broker réel. Le seul juge de
-  ces trois-là est G7.
-- Le résultat le plus probable de ce protocole, honnêtement, est : **aucune
-  stratégie ne passe**. C'est un résultat, pas un échec. L'avantage recherché ici
-  est le process, pas un bot.
+Une éventuelle ouverture finale et toute utilisation d'argent réel exigent une décision explicite de l'utilisateur, après qualification des étapes précédentes.

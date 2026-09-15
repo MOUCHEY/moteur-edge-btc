@@ -35,6 +35,7 @@ jobs:
             /data/seal_vault.py
             /experiments/events/
             /experiments/ledger.json
+            /experiments/*/spec.yaml
 
       - uses: actions/setup-python@v7
         with:

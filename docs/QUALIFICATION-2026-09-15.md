@@ -50,3 +50,7 @@ La revue de ce lot a repéré un gel G0 incomplet : le contrat était conservé 
 5. Mesurer les conditions et coûts de l'instrument effectivement exécuté avant de conclure à un résultat déployable.
 
 Le journal local et les règles GitHub protègent contre des erreurs ordinaires et permettent une revue contre une base publiée ; un compte qui peut réécrire les mécanismes n'est pas un tiers isolé. Une nouvelle revue indépendante sera utile aux étapes décisives. Aucun coffre, clé, série réservée, collecte ou ordre réel n'a été utilisé pour cette qualification.
+
+## Première exécution distante et correction du checkout
+
+Le [premier run GitHub](https://github.com/MOUCHEY/moteur-edge-btc/actions/runs/35024826177) a exécuté les 102 tests : 101 ont réussi et un a rencontré un fichier absent. Le checkout restreint omettait les YAML de contrats nécessaires au test de compatibilité des specs héritées. Le workflow inclut maintenant uniquement `experiments/*/spec.yaml` en plus de sa liste existante ; aucune série de marché n'est ajoutée. Le [constat de cet échec](qualification-2026-09-15/ci-initial.json) est conservé. Les preuves locales précédentes restent inchangées et identifient leur propre référence.

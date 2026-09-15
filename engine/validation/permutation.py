@@ -25,15 +25,19 @@ def permute_labels(labels: pd.Series, clusters: pd.Series | None,
         return rng.permutation(lab)
 
     cl = clusters.to_numpy()
+    if len(cl) != len(lab) or pd.isna(cl).any():
+        raise ValueError("grappes alignees et sans valeurs manquantes requises")
     uniq = pd.unique(cl)
     # une etiquette par grappe : on permute les grappes entieres
     rep = {c: lab[cl == c] for c in uniq}
+    if len({len(block) for block in rep.values()}) != 1:
+        raise ValueError("grappes inegales : une permutation adaptee doit etre preenregistree")
     shuffled = rng.permutation(uniq)
     out = np.empty_like(lab)
     for src, dst in zip(uniq, shuffled):
         m = cl == dst
         block = rep[src]
-        out[m] = np.resize(block, m.sum())
+        out[m] = block
     return out
 
 
@@ -78,6 +82,9 @@ def test(values: pd.Series, labels: pd.Series, selected, clusters: pd.Series | N
     n_clusters = int(pd.unique(clusters).size) if clusters is not None else int(len(v))
 
     return {
+        "qualified": False,
+        "passe_G4": False,
+        "scope": "Sensibilite conditionnelle a une echangeabilite non certifiee ; aucune promotion de porte.",
         "reel": float(reel),
         "null_median": float(np.median(null)),
         "null_p95": float(np.percentile(null, 95)),

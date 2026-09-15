@@ -1,3 +1,5 @@
+> Relais courant du 15 septembre 2026 : voir [QUALIFICATION](docs/QUALIFICATION-2026-09-15.md) et [PROTOCOLE](PROTOCOLE.md). Le texte ci-dessous est le relais historique, conservé pour provenance. Les annonces anciennes de portes et de compte d’essais ne qualifient pas les nouvelles exécutions.
+
 # Note de relais — Claude → Astra
 
 **Étape 1 : socle du dépôt.** 10 septembre 2026.

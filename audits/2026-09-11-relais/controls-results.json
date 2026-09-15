@@ -1,0 +1,86 @@
+{
+  "baseline_commit": "7454850c1328d41bf626766825833a480a5f4139",
+  "synthetic_only": true,
+  "executed_at_utc": "2026-09-13T13:02:21+00:00",
+  "market_data_or_vault_read": false,
+  "environment": {
+    "python": "3.13.3",
+    "numpy": "2.2.6",
+    "pandas": "2.2.3",
+    "scipy": "1.15.3",
+    "pyyaml": "6.0.3"
+  },
+  "code_sha256": {
+    "engine/data.py": "fb1ef43e4820b995c93faae6dbad726c0043fe3f730cf43c42059df3d80df1aa",
+    "engine/run.py": "867d06639a4cd0ac6587cbba0d93c0fc9f80e184d2587a053f0c642f91446d42",
+    "engine/validation/synthetic.py": "e04e220ed6d5c6abf9ab7ff9ef59bf4bd04be281777b2ef71d93a22e4405732f",
+    "engine/metrics.py": "3bb3922f8bf77ddc3f949b60deea46b25993d93f60732a384cf6dd7be09f0149"
+  },
+  "probe_sha256": "a9c8aeb4a6f683fd1855403dffc3ad81f57f5583963fcfe56ebfbb8b340304f3",
+  "findings": {
+    "C01_split_overlap": {
+      "reproduced": true,
+      "shared_synthetic_timestamps": [
+        "2023-01-01 00:00:00+00:00"
+      ]
+    },
+    "C02_oos_without_gates_and_reselected": {
+      "reproduced": true,
+      "exit_code": 0,
+      "grid_configurations_evaluated": 3,
+      "selected_on_synthetic_oos": {
+        "x": 3.0,
+        "one_sided": 2.220446049250313e-16
+      },
+      "gate_evidence_supplied": false
+    },
+    "C03_repeated_oos_unrecorded_overwrite": {
+      "reproduced": true,
+      "second_exit_code": 0,
+      "ledger_unchanged": true,
+      "report_replaced": true,
+      "oos_report_files_after_two_runs": 1
+    },
+    "C04_dsr_before_new_trials": {
+      "reproduced": true,
+      "prior_count_fixture": 136,
+      "new_configurations": 3,
+      "count_sent_to_dsr": 136,
+      "ledger_after_run": 139
+    },
+    "C05_failure_not_recorded": {
+      "reproduced": true,
+      "injected_failure": true,
+      "ledger_unchanged": true
+    },
+    "C09_metric_injected_as_parameter": {
+      "reproduced": true,
+      "declared_parameter_names": [
+        "x"
+      ],
+      "reported_parameter_names": [
+        "one_sided",
+        "x"
+      ],
+      "cause": "p_one_sided metric is selected by the p_ parameter prefix filter."
+    },
+    "C06_bootstrap_can_preserve_predictability": {
+      "reproduced": true,
+      "synthetic_process": "12 positive returns then 12 negative, repeated; block 24; drift removed",
+      "lagged_sign_times_next_log_return_mean": 0.007973311092577122,
+      "scope": "Counterexample to a universally no-predictability null; not a market strategy test."
+    },
+    "C07_one_simulation_can_pass_floor": {
+      "reproduced": true,
+      "valid_simulations": 1,
+      "passes": true,
+      "note": "No inference precision or valid null supplied."
+    },
+    "C08_simulation_errors_not_described": {
+      "reproduced": true,
+      "simulations_requested": 3,
+      "valid_simulations": 0,
+      "note": "Errors become NaN without a per-simulation error record."
+    }
+  }
+}

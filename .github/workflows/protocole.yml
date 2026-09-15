@@ -1,14 +1,19 @@
-name: Protocole
+name: Qualification synthetique
 
-# Ce workflow n'evalue aucune strategie. Il verifie que les MECANISMES qui
-# imposent le protocole sont en place et fonctionnent. Une regle qui n'est pas
-# testee ici n'est qu'une phrase dans un document.
-
+# Aucun backtest de marche, lecture de coffre ou collecte dans ce workflow.
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      base_sha:
+        description: SHA complet de la base dont il faut conserver le journal
+        required: true
+        type: string
+
+permissions:
+  contents: read
 
 jobs:
   mecanismes:
@@ -16,10 +21,21 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # 0 = tout l'historique. Par defaut GitHub ne recupere qu'UN commit, et le
-          # controle du compteur ne voyait alors rien a comparer — il passait au vert
-          # meme avec un compteur remis a zero (constate le 13/09/2026).
           fetch-depth: 0
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /.github/workflows/
+            /ci/
+            /engine/
+            /tests/
+            /requirements.txt
+            /PROTOCOLE.md
+            /data/collect_forward.py
+            /data/seal_vault.py
+            /experiments/events/
+            /experiments/ledger.json
+            /experiments/*/spec.yaml
 
       - uses: actions/setup-python@v7
         with:
@@ -27,71 +43,9 @@ jobs:
           cache: pip
 
       - name: Dependances
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt
 
-      - name: Tests des mecanismes du protocole
-        run: python3 -m unittest discover -s tests -v
-
-      - name: Toutes les specs sont valides
-        run: |
-          python3 - <<'PY'
-          import sys, pathlib
-          sys.path.insert(0, ".")
-          from engine import spec as sm
-          ko = 0
-          for p in sorted(pathlib.Path("experiments").rglob("spec.yaml")):
-              if "TEMPLATE" in str(p):
-                  continue
-              errs = sm.load(p).validate()
-              print(("OK  " if not errs else "KO  ") + str(p))
-              for e in errs:
-                  print("      -", e); ko += 1
-          sys.exit(1 if ko else 0)
-          PY
-
-      - name: Le coffre-fort est bien scelle
-        run: |
-          python3 - <<'PY'
-          import json, pathlib, sys
-          seal = json.loads(pathlib.Path("vault/SEAL.json").read_text())
-          # 1) la clef ne doit jamais etre dans le depot
-          assert not str(seal["clef"]).startswith(str(pathlib.Path.cwd())), "clef dans le depot"
-          # 2) aucune autorisation d'ouverture ne doit etre commitee
-          assert not pathlib.Path("vault/OPEN_AUTHORISATION").exists(), \
-              "OPEN_AUTHORISATION est versionne : le verrou est leve en permanence"
-          # 3) les fichiers chiffres doivent exister et etre non vides
-          for s in seal["series"]:
-              f = pathlib.Path("vault") / s["fichier_chiffre"]
-              assert f.exists() and f.stat().st_size > 0, f"{f} absent ou vide"
-          print("coffre scelle, clef hors depot, aucune autorisation ouverte")
-          PY
-
-      - name: Le compteur d'essais ne redescend jamais
-        run: |
-          python3 - <<'PY'
-          import json, subprocess, sys
-
-          def git(*a):
-              return subprocess.run(["git", *a], capture_output=True, text=True, check=True).stdout.strip()
-
-          # Un garde-fou qui ne voit pas ses donnees doit ECHOUER, jamais passer.
-          if git("rev-parse", "--is-shallow-repository") == "true":
-              sys.exit("ECHEC : clone superficiel, l'historique du compteur est invisible. "
-                       "Le checkout doit utiliser fetch-depth: 0.")
-
-          # Monotonie sur TOUT l'historique, pas seulement le commit precedent :
-          # un push de plusieurs commits ne doit pas pouvoir cacher une baisse.
-          etats = []
-          for sha in git("log", "--reverse", "--format=%H", "--", "experiments/ledger.json").split():
-              try:
-                  v = json.loads(git("show", f"{sha}:experiments/ledger.json"))["total_configs"]
-              except subprocess.CalledProcessError:
-                  continue  # commit qui supprime le fichier
-              etats.append((sha[:7], v))
-          etats.append(("courant", json.loads(open("experiments/ledger.json").read())["total_configs"]))
-
-          for (a, va), (b, vb) in zip(etats, etats[1:]):
-              if vb < va:
-                  sys.exit(f"ECHEC : le compteur d'essais a BAISSE entre {a} et {b} : {va} -> {vb}")
-          print(f"compteur monotone sur {len(etats)} etats : " + " -> ".join(str(v) for _, v in etats))
-          PY
+      - name: Journal conserve et tests synthetiques
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || inputs.base_sha }}
+        run: python ci/rejouer_local.py --base "$CI_BASE_SHA"

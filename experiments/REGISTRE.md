@@ -1,3 +1,15 @@
+# Registre des expériences — état courant au 15 septembre 2026
+
+Le journal courant est `events/*.json`. Il conserve les nouvelles tentatives, les contrats, les mesures et leurs issues. Le fichier `ledger.json` reste un snapshot historique immuable, avec ses formulations originales corrigées par [HISTORIQUE.json](HISTORIQUE.json).
+
+**136 n’est ni un total unique vérifié ni un minorant démontré.** Le recouvrement entre les deux déclarations héritées reste inconnu ; le sens d’un biais DSR ne peut pas être conclu de ce seul nombre. Les neuf configurations déclarées pour EXP-0000 sont conservées séparément des 600 chemins simulés déclarés. La grille de neuf a été vérifiée sans lire de marché ; ses performances n’ont pas été reproduites dans ce lot.
+
+Aucune nouvelle expérience de marché n’a été lancée pendant la correction du socle. Les tests synthétiques n’augmentent pas le compteur d’essais BTC. OOS et coffres restent indisponibles ; l’absence d’ouverture par cette correction ne certifie pas leur historique d’accès.
+
+La section qui suit est la photographie documentaire antérieure, conservée pour provenance. Ses affirmations de minorant, de bruit pur et de validation du coffre ne s’appliquent pas aux nouvelles exécutions.
+
+---
+
 # Registre des expériences
 
 Toute expérience lancée figure ici, **y compris les échecs, y compris les

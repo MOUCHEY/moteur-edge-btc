@@ -1,165 +1,46 @@
-# moteur EDGE RENTABLE / BTC
+# Moteur de recherche de stratégies BTC
 
-> Un moteur de recherche qui découvre, teste et **détruit** des stratégies sur BTC
-> jusqu'à ce qu'il n'en reste plus qu'une qui tienne vraiment la route.
+Découvrir des hypothèses plausibles, les tester avec un budget fixé, puis tenter de les réfuter. Le résultat peut être qu'aucune stratégie ne survive.
 
-Ce dépôt n'est pas un bot. C'est un **processus contradictoire**, avec deux agents
-qui ne poursuivent pas le même but, et un arbitre humain.
+La première correction du socle répond à l'[audit de septembre](audits/2026-09-11-relais/README.md) : signaux ponctuels sans accès au futur, contrats immuables, simulation corrigée, journal obligatoire et refus des validations indisponibles. Astra poursuit la construction sans dépendre de Claude, conformément à la demande de l'utilisateur. Les diagnostics ne sont pas présentés comme une revue indépendante.
 
-L'avantage recherché ici n'est pas un algorithme secret. C'est le process, les
-données, et la rigueur. Un bot se copie ; un protocole de falsification, non.
+## État du projet
 
----
+- **Disponible :** qualification sur données fictives ; outils de recherche IS avec préenregistrement et journal.
+- **À préparer avant une expérience réelle :** fichier IS physiquement séparé, continu et contrôlé ; hypothèse et contrat G0 complets.
+- **Non qualifiés :** méthode statistique G4, nombre historique d'essais indépendants, coûts d'exécution réels et gardien du coffre.
+- **Bloqués dans le moteur :** OOS, coffres, collecte/scellement hérités et toute promotion finale.
+- **Aucune stratégie validée par ce lot.** Les résultats d'EXP-0000 sont conservés comme résultats historiques conditionnels à l'ancienne version.
 
-## Le principe
+Le [protocole révisé](PROTOCOLE.md) décrit exactement les règles disponibles et les étapes restantes. [Le journal de qualification](docs/QUALIFICATION-2026-09-15.md) indique les corrections et leur validation.
 
-La faute qui coûte de l'argent est toujours la même : **optimiser sur l'historique,
-y croire, perdre en réel.** Elle vient d'un défaut de structure — la même personne
-cherche l'edge et le valide, donc devient l'avocat de sa propre découverte.
+## Vérifier sans données de marché
 
-D'où la règle qui gouverne tout ce dépôt :
-
-**Celui qui découvre ne valide jamais. Celui qui attaque ne répare jamais.**
-
-| | **Astra** | **Claude** | **Jeunathan** |
-|---|---|---|---|
-| Rôle | Découverte | **Red team** | Arbitre |
-| Produit | Hypothèses + specs figées | Attaques + exécutions du harness | Décisions |
-| Interdit | Élargir une grille après coup | **Réparer une stratégie** | — |
-
-Claude ne propose jamais d'amélioration. S'il trouve une faille réparable, c'est à
-Astra de la réparer — dans une **nouvelle** expérience qui consomme du budget.
-Un attaquant qui répare devient l'avocat de sa propre correction, et le dispositif
-s'effondre.
-
----
-
-## Comment ça circule
-
-```
-   Astra                        GitHub                        Claude
-     │                            │                              │
-     │  1. hypothesis.md ────────►│                              │
-     │     (mécanisme, prédictions,│                             │
-     │      budget — AUCUN chiffre)│                             │
-     │                            │◄──── 2. exécute le harness ──│
-     │                            │      publie les résultats     │
-     │                            │◄──── 3. rapport d'attaque ────│
-     │                            │      failles fatales/majeures │
-     │  4. réponse par une ───────►│                             │
-     │     NOUVELLE mesure         │                             │
-     │        (jamais un argument) │                             │
-     ▼                            ▼                              ▼
-              les 8 portes, dans l'ordre, sans en sauter
+```sh
+python3 -m pip install -r requirements.txt
+python3 ci/rejouer_local.py --tests-only
 ```
 
-Les règles de passage sont dans **[PROTOCOLE.md](PROTOCOLE.md)**. Elles sont
-chiffrées et pré-écrites : une porte se franchit sur un critère, pas sur un avis.
+Pour contrôler aussi la conservation de l'historique, fournir le SHA complet de la base de comparaison :
 
----
-
-## Les données
-
-| Bloc | Période | Barres (1h) | Accès |
-|---|---|---|---|
-| **IS** — bac à sable | 2017-08-17 → 2022-12-31 | 46 983 | libre |
-| **OOS** — validation | 2023-01-01 → 2025-08-31 | 23 375 | 1 ouverture par stratégie |
-| **VAULT-H** — coffre historique | 2025-09-01 → 2026-08-31 | 8 760 | 1 ouverture, **valeur indicative seulement** |
-| **VAULT-F** — coffre futur | à partir du 2026-09-10 | croît | **1 ouverture, définitive** |
-
-Source : dumps publics Binance spot (`data.binance.vision`), BTCUSDT, 1h et 15m.
-Téléchargement reproductible par `python3 data/fetch.py`, hash publié dans
-`data/MANIFEST.json`.
-
-**Il y a deux coffres, et un seul est propre.** Astra a objecté — archives à
-l'appui — que la période 2025-2026 avait déjà été consultée comme test final dans
-un projet antérieur (`final_test_already_consulted: "2025-2026"`). Changer de
-fournisseur de données ne rétablit pas l'indépendance : ce sont les mêmes prix,
-déjà regardés. **VAULT-H peut donc tuer une stratégie, jamais l'anoblir.** Seul
-**VAULT-F**, collecté après le gel du 10 septembre 2026, est vierge par
-construction. Détail : [vault/SEAL.md](vault/SEAL.md).
-
-**Le coffre est chiffré, pas seulement rangé à part.** La période scellée est
-physiquement absente des fichiers publiés, et `data/fetch.py` est borné pour
-qu'un retéléchargement ne la réécrive pas en clair. La clé AES-256 vit hors du dépôt, dans
-`~/.moteur-edge-btc/vault.key`, et a été générée par un sous-processus qui l'a
-écrite directement sur disque — elle n'a jamais transité par la sortie standard,
-donc aucun des deux agents ne l'a lue. Le verrou tient même contre nous.
-
-Ouvrir le coffre demande de déposer un fichier `vault/OPEN_AUTHORISATION`. Chaque
-ouverture est journalisée dans `vault/OUVERTURES.log` et le hash du contenu est
-vérifié : une altération se voit.
-
----
-
-## Démarrer
-
-```bash
-pip install -r requirements.txt
-python3 data/fetch.py                      # données, vérifiées et hashées
-python3 -m unittest discover -s tests -v   # 30 tests des mécanismes du protocole
-python3 -m engine.run experiments/EXP-0000-calibration/spec.yaml --split IS
-python3 -m engine.attack experiments/EXP-0000-calibration/spec.yaml --params '{"fen":72,"seuil":2.0}'
+```sh
+python3 ci/rejouer_local.py --base 72714d6243c5dc6823d5aabd360a50a6d05ec54f
 ```
 
-Structure :
+Ces commandes sélectionnent exclusivement `test_*_synthetic.py`. La suite historique `test_mecanismes.py` et les sondes de l'audit initial restent conservées pour provenance ; elles ne constituent pas la suite de non-régression courante. Ne pas lancer une découverte générale de tous les anciens tests : certains lisaient des séries réelles.
 
-```
-PROTOCOLE.md        les 8 portes et les règles anti-triche — la loi du dépôt
-ASTRA.md            comment Astra soumet une hypothèse
-RED_TEAM.md         la checklist d'attaque de Claude
-engine/             harness : données, features, backtest, métriques, validation
-experiments/        une expérience = un dossier, résultats inclus, échecs inclus
-  ledger.json       compteur d'essais du projet — il ne se remet jamais à zéro
-vault/              le coffre-fort chiffré
+## Préparer une nouvelle expérience
+
+Voir [le format G0](docs/PREENREGISTREMENT.md). Une fois le contrat écrit et le fichier IS dédié préparé, la commande de recherche est :
+
+```sh
+python3 -m engine.run experiments/EXP-NOUVELLE/spec.yaml --split IS
 ```
 
----
+`EXP-NOUVELLE` est un exemple de chemin, pas une expérience déjà créée. Le programme refuse une hypothèse absente, une modification du contrat gelé ou une validation réservée. Il publie un rapport unique et conserve les événements, y compris les échecs. `--no-ledger` n'existe plus.
 
-## Le compteur d'essais
+## Historique et limites
 
-`experiments/ledger.json` compte **toutes** les configurations testées depuis le
-début du projet — y compris celles des expériences abandonnées. Ce nombre entre
-dans le Deflated Sharpe de toute stratégie évaluée ensuite.
+Le [registre](experiments/REGISTRE.md), le [snapshot de provenance](experiments/HISTORIQUE.json) et les événements conservent les essais connus et les incertitudes. **136 n'est pas un total vérifié d'essais uniques ou indépendants.** Les neuf variantes d'EXP-0000 et les simulations sont distinguées.
 
-C'est ce qui rend le protocole honnête : **plus on cherche, plus la barre monte,
-et personne ne peut repartir de zéro.**
-
----
-
-## Ce que ce dépôt ne peut pas faire
-
-À écrire noir sur blanc, parce que l'auto-illusion commence toujours ici.
-
-- Des bougies OHLC ne contiennent ni carnet d'ordres, ni flux réel, ni calendrier.
-  Ne rien trouver ici ne prouve pas qu'il n'y a rien.
-- Un backtest n'a ni la latence, ni l'exécution, ni le broker réel.
-- Les coûts utilisés (**6 bps aller-retour**) sont une **hypothèse non mesurée**,
-  pas un relevé. Tout résultat est conditionnel à ce chiffre tant que les relevés
-  cTrader réels ne l'ont pas remplacé. Voir `docs/COUTS.md`.
-- **Le résultat le plus probable de ce protocole est qu'aucune stratégie ne passe.**
-  C'est un résultat, pas un échec.
-
----
-
-## La barre à franchir
-
-Mesuré, pas supposé — `experiments/EXP-0000-calibration/RAPPORT.md` :
-
-> Un balayage de **neuf configurations** sur du **bruit pur** produit un t-stat
-> maximal de **+1,67 au 95ᵉ centile** et **+4,03 au maximum**, avec une médiane
-> positive.
-
-Neuf. Une grille minuscule suffit à fabriquer un t-stat de 1,7. C'est le chiffre
-que toute stratégie proposée ici doit battre.
-
-## Statut
-
-| | |
-|---|---|
-| Harness | opérationnel, test anti-lookahead automatique |
-| Données publiques | 70 357 barres 1h + 281 374 barres 15m, 29 et 32 gaps |
-| Tests des mécanismes | **30, 0 échec** — exécutés aussi par la CI GitHub |
-| Coffres | scellés le 2026-09-10, **0 ouverture** |
-| Compteur d'essais | **136** (dette héritée déclarée, minorant) |
-| Stratégies passées en G7 | **0** |
+Un résultat sur bougies et coûts supposés ne prouve ni l'exécution future ni un avantage déployable. Le journal est protégé contre les erreurs ordinaires et vérifié contre Git ; une vraie séparation des accès au coffre reste à construire. La CI historique a été réactivée sur GitHub. La réussite de cette nouvelle qualification doit être vérifiée sur son propre commit, séparément des anciens runs.

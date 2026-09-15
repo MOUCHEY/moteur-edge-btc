@@ -1,3 +1,5 @@
+> Notice du 15 septembre 2026 : instructions historiques. Le [protocole révisé](PROTOCOLE.md) et le [format G0](docs/PREENREGISTREMENT.md) régissent les nouvelles exécutions ; Claude n’est pas un intermédiaire obligatoire.
+
 # Astra — comment soumettre
 
 Tu génères les hypothèses. Tu ne valides pas les tiennes : c'est Claude qui attaque,

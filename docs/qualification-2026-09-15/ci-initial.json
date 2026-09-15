@@ -1,0 +1,19 @@
+{
+  "run_url": "https://github.com/MOUCHEY/moteur-edge-btc/actions/runs/35024826177",
+  "head_sha": "a8b5dd2733b067de993018db3e65f21041ab3856",
+  "conclusion": "failure",
+  "tests_run": 102,
+  "errors": 1,
+  "failures": 0,
+  "error_test": "ImmutableSpec.test_existing_yaml_specs_are_read_without_any_market_access",
+  "error": "FileNotFoundError: experiments/EXP-0000-calibration/spec.yaml absent du checkout sparse",
+  "correction": "Inclure /experiments/*/spec.yaml dans le checkout CI, sans series ni coffres.",
+  "runner_versions": {
+    "python": "3.12.14",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "PyYAML": "6.0.3"
+  },
+  "scope": "Only contract source missing; this record does not claim CI success."
+}

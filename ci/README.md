@@ -1,104 +1,45 @@
-# CI du protocole
+# Qualification synthétique et conservation du journal
 
-## Statut — 13 septembre 2026
+## Ce que contrôle cette version
 
-| | |
-|---|---|
-| Workflow | **actif** : `.github/workflows/protocole.yml`, déclenché à chaque push sur `main` |
-| Exécution sur GitHub | **fonctionne** depuis le 13/09/2026 (blocage de facturation du compte levé) |
-| Premier run réel | [34766511829](https://github.com/MOUCHEY/moteur-edge-btc/actions/runs/34766511829), tentative 2 : 11 étapes, succès, 26 tests |
-| Défaut révélé par ce run | le contrôle du compteur était **décoratif sur GitHub** — corrigé, voir plus bas |
-| Protection de `main` | **active** : réécriture forcée et suppression refusées, sans exception — vérifié par l'usage |
-| Rejeu local | `python3 ci/rejouer_local.py` |
+Le workflow `.github/workflows/protocole.yml` et la commande locale appellent le même programme, `ci/rejouer_local.py`. Il vérifie :
 
-## Le défaut révélé par le premier vrai run
+- la disponibilité d'une base Git explicitement identifiée ;
+- la conservation **octet pour octet** de `experiments/ledger.json`, qui reste un historique hérité ;
+- la conservation de chaque fichier `experiments/events/*.json` présent dans la base ;
+- la validité du nouveau journal avec `engine.journal.read_events` ;
+- les seuls tests `tests/test_*_synthetic.py`, sur fixtures et fichiers temporaires.
 
-Le run était vert. Il ne l'était pas pour la bonne raison.
+La base est le commit de base de la PR, le commit précédent indiqué par l'événement push, ou le SHA fourni pour un lancement manuel. Une base absente, nulle, introuvable ou sans ledger est un **échec**, jamais une initialisation implicite. Le nombre de configurations conservées décrit des essais ; il ne mesure pas un nombre de tests statistiquement indépendants.
 
-`actions/checkout` ne récupère par défaut **qu'un seul commit**. Le contrôle « le
-compteur d'essais ne redescend jamais » comparait le compteur avec celui du commit
-précédent — qu'il ne voyait donc pas. Il a affiché :
+Le checkout du workflow est limité au code, aux tests et au journal. Les anciens tests `test_mecanismes.py`, les anciens scripts d'audit, les données de marché et les coffres ne sont pas exécutés ou chargés. Aucun contrôle de clé ni déchiffrement n'est inclus. OOS, VAULT et `split=None` restent indisponibles dans le chargeur ; seul un fichier physiquement réservé à IS peut être chargé en dehors de cette qualification synthétique. Aucun jeu IS n'est préparé par la CI.
 
-```
-pas d'etat precedent comparable ; compteur = 136
-```
+## Exécution locale
 
-et il est **passé**. Reproduit dans un clone à un commit : avec le compteur **remis à
-zéro**, il passait aussi. Le garde-fou censé empêcher qu'on efface le budget de
-recherche ne gardait rien, et la coche verte le masquait.
-
-Localement il fonctionnait, parce que le dépôt local a tout l'historique. Seules les
-conditions exactes de GitHub révélaient la cécité.
-
-**Correction :**
-
-1. `fetch-depth: 0` : GitHub récupère tout l'historique.
-2. Un clone superficiel fait désormais **échouer** le contrôle. Un garde-fou qui ne voit
-   pas ses données ne doit jamais passer.
-3. Monotonie vérifiée sur **tout** l'historique du compteur, pas seulement le dernier
-   commit : un push de plusieurs commits ne peut plus cacher une baisse.
-4. Quatre tests (`GardeFousCI`) rejouent **l'étape exacte du workflow** dans des clones —
-   superficiel, saboté, intact. Vérifié contre l'ancienne version : **deux d'entre eux
-   échouent** (`fetch-depth` absent, clone superficiel qui passe) — ce sont ceux qui visent
-   le défaut. Les deux autres y passent aussi, et c'est attendu : en clone complet,
-   l'ancien contrôle détectait déjà une baisse. Ils garantissent que la correction n'a
-   cassé ni cette détection, ni le cas normal.
-
-## Protection de `main` — active depuis le 13 septembre 2026
-
-Ruleset `protection-main` : **réécriture forcée et suppression refusées**, **aucune
-exception**, administrateur compris. Astra et Claude poussent avec le même compte
-propriétaire : une exception pour l'administrateur rendrait la règle inopérante contre
-eux.
-
-Vérifié **par l'usage**, pas seulement par la configuration. Le test a été mené sur une
-branche jetable protégée par une règle strictement identique, pour ne jamais risquer
-`main` :
-
-| Opération | Attendu | Obtenu |
-|---|---|---|
-| Envoi normal | accepté | accepté |
-| `git push --force` | refusé | refusé — `GH013 … Cannot force-push to this branch` |
-| Suppression de la branche | refusée | refusée — `GH013 … Cannot delete this branch` |
-
-GitHub confirme que ces deux règles s'appliquent à `main`
-(`gh api repos/MOUCHEY/moteur-edge-btc/rules/branches/main`).
-
-### Ce que la protection ne couvre pas
-
-- Le compte propriétaire peut **supprimer ou désactiver la règle elle-même**, par les
-  réglages ou par l'API. La protection rend une réécriture de l'historique délibérée,
-  elle ne la rend pas impossible.
-- Les envois directs sur `main` restent autorisés, sans pull request ni attente de la
-  CI. C'est un choix : garder simple le circuit Astra ↔ Claude.
-
-## Interpréter un run rouge
-
-Vérifier d'abord le nombre d'étapes réellement exécutées :
+Avec les dépendances installées :
 
 ```bash
-gh run view <id> --json jobs -q '.jobs[] | "\(.name): \(.steps|length) etapes"'
+python3 ci/rejouer_local.py --base <SHA-complet-de-la-base>
 ```
 
-`0 etapes` = le job n'a pas démarré (cas du blocage de facturation du 13/09/2026) : le
-run ne dit rien du code.
+Pour vérifier uniquement les mécanismes synthétiques :
 
-## Versions des actions — mises à jour le 14 septembre 2026
+```bash
+python3 ci/rejouer_local.py --tests-only
+```
 
-`actions/checkout@v7` et `actions/setup-python@v7`, qui tournent sur **Node.js 24**. Les
-versions précédentes (`v4`, `v5`) visaient Node.js 20, déprécié par GitHub.
+Le second mode **ne valide pas la conservation du journal**. Il n'est pas utilisé par le workflow. Une réussite locale démontre uniquement les contrôles effectivement exécutés dans cet environnement, pas une réussite des actions GitHub de checkout, de préparation de Python ou d'installation des dépendances.
 
-Vérifié avant la mise à jour, et pas supposé :
+Le journal chaîné et la comparaison Git détectent des modifications par les chemins contrôlés. Ils ne constituent pas un stockage extérieur inviolable : la revue des changements et un contrôle requis à la fusion restent nécessaires. Les propriétés d'isolation et d'ouverture unique d'un futur gardien du coffre ne sont pas qualifiées par cette CI.
 
-| Point | Constat |
-|---|---|
-| Node.js utilisé (`runs.using` du `action.yml`) | `node24` pour les deux |
-| Runner minimum exigé depuis checkout v5 / setup-python v6 | 2.327.1 — notre runner : **2.337.0** |
-| `fetch-depth` en checkout v7 (le garde-fou du compteur en dépend) | présent, même sens : `0` = tout l'historique |
-| `python-version` et `cache` en setup-python v7 | présents |
-| `pip-install`, retiré en setup-python v7 | non utilisé chez nous |
-| checkout v6 : identifiants stockés dans un fichier séparé | sans effet : le workflow ne pousse rien et ne lit que l'historique local |
-| checkout v7 : refus des forks en `pull_request_target` / `workflow_run` | sans effet : nous déclenchons sur `push` et `pull_request` |
+## État distant connu
 
-Les actions sont référencées par tag majeur (`@v7`), comme avant. Les épingler par SHA
-complet serait plus sûr contre un tag déplacé ; ce n'est pas fait.
+Le run [34766359464](https://github.com/MOUCHEY/moteur-edge-btc/actions/runs/34766359464), documenté le 13 septembre 2026, a été bloqué avant démarrage pour un problème de facturation du compte. Il avait exécuté **zéro étape**. Cette information historique ne permet pas de conclure au statut des futurs runs.
+
+La présente modification n'atteste **aucune exécution distante réussie**. Pour interpréter un futur résultat, vérifier les étapes réellement exécutées, ainsi que la branche et le commit testés. Une validation locale ou un fichier de workflow versionné ne remplace pas cette preuve.
+
+## Intégration de la branche principale du 15 septembre
+
+Les mises à jour jusqu’à `a7fd59d28559a3e0632b4b3d775ea99d2bfcc18e` sont intégrées. Les actions `checkout` et `setup-python` restent en v7, comme dans cette mise à jour. L’historique de la protection de main et de la remise en marche de la CI est conservé dans [la documentation de référence](https://github.com/MOUCHEY/moteur-edge-btc/blob/a7fd59d28559a3e0632b4b3d775ea99d2bfcc18e/ci/README.md).
+
+La nouvelle suite utilise une comparaison explicite avec la base et préserve le snapshot hérité ainsi que chaque événement. Elle remplace le compteur scalaire courant par un journal avec des comptes distincts. Les anciens tests qui parcourent les séries réelles sont conservés mais exclus de cette qualification. Le succès d’une ancienne CI ne vaut pas succès de cette version ; consulter le run associé à son commit. Les règles de protection GitHub n’ont pas été modifiées par ce lot.

@@ -1,0 +1,36 @@
+{
+  "revision": "173ab068c85150811b2569013e49fec917c9f3c3",
+  "findings": [
+    {
+      "id": "R1",
+      "titre": "Substitution de parametre non parenthesee (engine/expressions.py:73)",
+      "reproduit": true,
+      "detail": "expression apres substitution : 'x > -2.0 ** 2'\nPython evalue -2.0 ** 2 = -4.0 au lieu de (-2.0)**2 = 4.0\nsignal obtenu  : [True, True, True]\nsignal attendu : [False, False, True]"
+    },
+    {
+      "id": "R2",
+      "titre": "assert_causal : fuite sur lignes rares non detectee (engine/features.py:115)",
+      "reproduit": true,
+      "detail": "n = 83 barres, coupes par defaut = [1, 20, 41, 62, 82]\nlignes reellement contaminees par close(t+1) : 12\nassert_causal a ACCEPTE ce builder"
+    },
+    {
+      "id": "R3",
+      "titre": "Troncature du journal : le gel G0 redevient modifiable (engine/journal.py:187)",
+      "reproduit": true,
+      "detail": "1) gel initial du contrat A : ok (5 evenements)\n2) tentative de contrat B sur le meme id : Contrat deja fige : creer une nouvelle experience pour le modifier.\n3) suppression des fichiers d'evenements (jamais commites)\n4) nouveau gel du contrat B : ACCEPTE\n5) read_events sur le journal tronque : chaine valide = True"
+    },
+    {
+      "id": "R4",
+      "titre": "Perimetre CI : rapports publies et HISTORIQUE.json non couverts (ci/rejouer_local.py:49)",
+      "reproduit": true,
+      "detail": "Depot temporaire : rapport publie supprime, HISTORIQUE.json reecrit,\nevenement post-base cree puis supprime.\nverify_history : ACCEPTE (1 evenement(s) de base verifies)"
+    },
+    {
+      "id": "R5",
+      "titre": "Colonne de flux absente : exception non prevue (engine/data.py:108, engine/features.py:51)",
+      "reproduit": true,
+      "detail": "_sanity sur un CSV sans taker_buy_base : accepte\nfeatures.build leve : KeyError\nrun.main n'attrape que ('ResearchError', 'ValueError', 'RuntimeError') -> remontee non geree"
+    }
+  ],
+  "note": "code de sortie 0 = defauts reproduits, pas moteur valide"
+}
